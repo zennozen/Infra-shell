@@ -10,16 +10,8 @@ source "$script_path/00_utils/_logger.sh"
 
 # capture errors and print environment variables
 trap '_trap_print_env \
-    find_cmd source_script_path target_script_path
+  find_cmd source_script_path target_script_path
 ' ERR
-
-function _help() {
-    printf "${yellow}Description: A tool to generate standalone scripts for easy distribution and use.${reset}\n\n"
-    printf "Invalid option ${@:1}\n"
-    printf "${green}Usage: ${reset}\n"
-    printf "    ${gray}bash ${blue}$0 ${green}ls${gray}(=list) full(=full_path)${reset}\n"
-    printf "    ${gray}bash ${blue}$0 ${green}gr${gray}(=generate) ${green}source_script_name${gray}/all output_dir(default:build)${reset}\n"
-}
 
 # define golabal variables
 output_dir="output"
@@ -29,115 +21,127 @@ output_dir="output"
 #######################################
 
 function list_name() {
-    local level="$1"
-    local real_path="$(realpath "$(dirname "${BASH_SOURCE[0]}")")"
-    local current_script="$(basename "${BASH_SOURCE[0]}")"
-    local exclude_dirs=("$current_script" "00*" "$output_dir*")
-    local exclude_options=""
+  local level="$1"
+  local real_path="$(realpath "$(dirname "${BASH_SOURCE[0]}")")"
+  local current_script="$(basename "${BASH_SOURCE[0]}")"
+  local exclude_dirs=("$current_script" "00*" "$output_dir*")
+  local exclude_options=""
 
-    for dir in "${exclude_dirs[@]}"; do
-        exclude_options+=" -path '$real_path/$dir' -o"
-    done
+  for dir in "${exclude_dirs[@]}"; do
+    exclude_options+=" -path '$real_path/$dir' -o"
+  done
 
-    # Remove the trailing '-o' from the exclude_condition
-    exclude_options=${exclude_options%-o}
-    # Add a final -true to ensure that the find command does not prune all directories
-    exclude_options+=" -true"
+  # Remove the trailing '-o' from the exclude_condition
+  exclude_options=${exclude_options%-o}
+  # Add a final -true to ensure that the find command does not prune all directories
+  exclude_options+=" -true"
 
-    case $level in
-        full|full_path)
-            find_cmd="find $real_path -type f -name '*.sh' ! \( $exclude_options \)"
-            ;;
-        *)
-            find_cmd="find $real_path -type f -name '*.sh' ! \( $exclude_options \) -exec basename {} \;"
-            ;;
-    esac
+  case $level in
+    full|full_path)
+      find_cmd="find $real_path -type f -name '*.sh' ! \( $exclude_options \)"
+      ;;
+    *)
+      find_cmd="find $real_path -type f -name '*.sh' ! \( $exclude_options \) -exec basename {} \;"
+      ;;
+  esac
 
-    eval $find_cmd
+  eval $find_cmd
 }
 
 function generate_standalone() {
-    case $1 in
-        all)
-            all_scripts=$(list_name)
-            for s in ${all_scripts[@]}; do
-                generate_standalone $s
-            done
+  case $1 in
+    all)
+      all_scripts=$(list_name)
+      for s in ${all_scripts[@]}; do
+        generate_standalone $s
+      done
+      ;;
+    *)
+      source_script="$1"
+      source_script_path=$(list_name full_path | grep $source_script)
+      target_dir="${2:-$output_dir}"
+      target_script_path="$target_dir/$source_script"
+
+      # mark whether the shebang and set -o options have already been written
+      local shebang_written=false
+      local errexit_written=false
+      # record already included scripts
+      declare -A included_scripts
+
+      # chk args
+      [[ -f $source_script_path ]] || { _logger error "$source_script_path not found!" && exit 1; }
+      [[ -d $target_dir ]] || mkdir -p $target_dir
+
+      > $target_script_path
+
+      # add a newline at the end to ensure the last line is read even if it doesn't end with a newline
+      (cat "$source_script_path"; echo) | while IFS= read -r line; do
+        case $line in
+          '#!'*)
+            [[ "$shebang_written" == "false" ]] && echo "$line" >> "$target_script_path" && shebang_written=true
             ;;
-        *)
-            source_script="$1"
-            source_script_path=$(list_name full_path | grep $source_script)
-            target_dir="${2:-$output_dir}"
-            target_script_path="$target_dir/$source_script"
-
-            # mark whether the shebang and set -o options have already been written
-            local shebang_written=false
-            local errexit_written=false
-            # record already included scripts
-            declare -A included_scripts
-
-            # chk args
-            [[ -f $source_script_path ]] || { _logger error "$source_script_path not found!" && exit 1; }
-            [[ -d $target_dir ]] || mkdir -p $target_dir
-
-            > $target_script_path
-
-            # add a newline at the end to ensure the last line is read even if it doesn't end with a newline
-            (cat "$source_script_path"; echo) | while IFS= read -r line; do
-                case $line in
-                    '#!'*)
-                        [[ "$shebang_written" == "false" ]] && echo "$line" >> "$target_script_path" && shebang_written=true
-                        ;;
-                    'set -o errexit')
-                        [[ "$errexit_written" == "false" ]] && echo "$line" >> "$target_script_path" &&  errexit_written=true
-                        ;;
-                    'source '*'.sh'* )
-                        script_to_include_path=$(echo $line | awk '{print $2}' | sed 's/"//g' | sed "s#\$script_path#$(dirname $source_script_path)#g")
-
-                        [[ -f $script_to_include_path ]] || { _logger error "$script_to_include_path not found!" && continue; }
-
-                        # Get the script name from the path
-                        script_to_include_name=$(basename "$script_to_include_path")
-                        # Check if the script has already been included by name
-                        if [[ -n ${included_scripts[$script_to_include_name]} ]]; then
-                            _logger info "Skipping already included script: $script_to_include_name"
-                            continue
-                        fi
-                        included_scripts[$script_to_include_name]=1
-
-                        include_content=$(<"$script_to_include_path")
-                        # skip the shebang line in the included script
-                        include_content=$(echo "$include_content" | sed '1d')
-
-                        _print_line split blank >> "$target_script_path"
-                        echo -e "####################### $line start #######################" >> "$target_script_path"
-                        echo "$include_content" >> "$target_script_path"
-                        echo -e "####################### $line end #########################" >> "$target_script_path"
-                        _print_line split blank >> "$target_script_path"
-                        ;;
-                    *)
-                        echo "$line" >> "$target_script_path"
-                        ;;
-                esac
-            done < $source_script_path
-
-            _print_line split -
-            _logger info "Generated complete script: ${blue}$target_script_path"
+          'set -o errexit')
+            [[ "$errexit_written" == "false" ]] && echo "$line" >> "$target_script_path" &&  errexit_written=true
             ;;
-    esac
+          'source '*'.sh'* )
+            script_to_include_path=$(echo $line | awk '{print $2}' | sed 's/"//g' | sed "s#\$script_path#$(dirname $source_script_path)#g")
+
+            [[ -f $script_to_include_path ]] || { _logger error "$script_to_include_path not found!" && continue; }
+
+            # Get the script name from the path
+            script_to_include_name=$(basename "$script_to_include_path")
+            # Check if the script has already been included by name
+            if [[ -n ${included_scripts[$script_to_include_name]} ]]; then
+              _logger info "Skipping already included script: $script_to_include_name"
+              continue
+            fi
+            included_scripts[$script_to_include_name]=1
+
+            include_content=$(<"$script_to_include_path")
+            # skip the shebang line in the included script
+            include_content=$(echo "$include_content" | sed '1d')
+
+            _print_line split blank >> "$target_script_path"
+            echo -e "####################### $line start #######################" >> "$target_script_path"
+            echo "$include_content" >> "$target_script_path"
+            echo -e "####################### $line end #########################" >> "$target_script_path"
+            _print_line split blank >> "$target_script_path"
+            ;;
+          *)
+            echo "$line" >> "$target_script_path"
+            ;;
+        esac
+      done < $source_script_path
+
+      _print_line split -
+      _logger info "Generated complete script: ${blue}$target_script_path"
+      ;;
+  esac
 }
 
 
-case $1 in
+function main() {
+  function _help() {
+    printf "${yellow}Description: A tool to generate standalone scripts for easy distribution and use.${reset}\n\n"
+    printf "Invalid option ${@:1}\n"
+    printf "${green}Usage: ${reset}\n"
+    printf "    ${gray}bash ${blue}$0 ${green}ls${gray}(=list) full(=full_path)${reset}\n"
+    printf "    ${gray}bash ${blue}$0 ${green}gr${gray}(=generate) ${green}source_script_name${gray}/all output_dir(default:build)${reset}\n"
+  }
+
+  case $1 in
     ls|list)
-        shift
-        list_name ${@:1}
-        ;;
+      shift
+      list_name ${@:1}
+      ;;
     gr|generate)
-        shift
-        [[ $# -ge 1 ]] || { _help && exit 1; }
-        generate_standalone ${@:1}
-        ;;
+      shift
+      [[ $# -ge 1 ]] || { _help && exit 1; }
+      generate_standalone ${@:1}
+      ;;
     *)
-        _help ${@:1} && exit 1 ;;
-esac
+      _help ${@:1} && exit 1 ;;
+  esac
+}
+
+main ${@:1}
