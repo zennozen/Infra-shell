@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-########
-## Usage: curl -fsSL https://raw.githubusercontent.com/zennozen/Infra-shell/refs/heads/<branch_name>/run.sh | bash /dev/stdin <branch_name>
-########
+#####################################
+## Usage: curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/zennozen/Infra-shell/refs/heads/<branch_name>/run.sh | bash /dev/stdin <branch_name>
+#####################################
 set -e
 
 GITHUB_PROXY="https://ghproxy.net"
