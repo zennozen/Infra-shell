@@ -21,35 +21,35 @@ name=Rocky Linux \$releasever - BaseOS
 baseurl=https://mirrors.aliyun.com/rockylinux/\$releasever/BaseOS/\$basearch/os/
 gpgcheck=1
 enabled=1
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-\$releaserver
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-\$releasever
 
 [appstream]
 name=Rocky Linux \$releasever - AppStream
 baseurl=https://mirrors.aliyun.com/rockylinux/\$releasever/AppStream/\$basearch/os/
 gpgcheck=1
 enabled=1
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-\$releaserver
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-\$releasever
 
 [crb]
 name=Rocky Linux \$releasever - CRB
 baseurl=https://mirrors.aliyun.com/rockylinux/\$releasever/CRB/\$basearch/os/
 gpgcheck=1
 enabled=1
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-\$releaserver
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-\$releasever
 
 [extras]
 name=Rocky Linux \$releasever - Extras
 baseurl=https://mirrors.aliyun.com/rockylinux/\$releasever/extras/\$basearch/os/
 gpgcheck=1
 enabled=1
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-\$releaserver
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-\$releasever
 
 [devel]
 name=Rocky Linux \$releasever - Devel
 baseurl=https://mirrors.aliyun.com/rockylinux/\$releasever/devel/\$basearch/os/
 gpgcheck=1
 enabled=1
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-\$releaserver
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-\$releasever
 EOF
 
   tee /etc/yum.repos.d/epel.repo <<-EOF

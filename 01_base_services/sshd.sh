@@ -27,7 +27,12 @@ PermitRootLogin yes
 PasswordAuthentication yes
 PubkeyAuthentication yes
 AuthorizedKeysFile .ssh/authorized_keys
+SyslogFacility AUTHPRIV
 ChallengeResponseAuthentication no
+GSSAPIAuthentication yes
+GSSAPICleanupCredentials no
+UsePAM yes
+PrintMotd no
 MaxAuthTries 3
 MaxSessions 10
 ClientAliveInterval 300
