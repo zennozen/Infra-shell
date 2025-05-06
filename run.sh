@@ -10,7 +10,12 @@ PROJ_URL="$GITHUB_PROXY/https://github.com/zennozen/Infra-shell/archive/refs/hea
 
 which wget || dnf install -y wget
 which unzip || dnf install -y unzip
-wget -c $PROJ_URL && unzip $BRANCH.zip && cd Infra-shell-$BRANCH
+wget -c $PROJ_URL && unzip $BRANCH.zip && rm -rf $_
 
+echo -e "Usage: 
+cd Infra-shell-$BRANCH
 bash build ls
-bash build
+bash build gr k8s.sh
+
+cd output
+bash k8s.sh"
