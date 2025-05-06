@@ -88,37 +88,6 @@ if ! grep -q '^keepcache=1' /etc/dnf/dnf.conf; then
   echo "keepcache=1" | tee >> /etc/dnf/dnf.conf
 fi
 
-function _remote_install_rpms() {
-  local dep="$1"
-  local offline_pkg_path="$(find /usr/local/src/ -type d -name $dep)"
-  local add_repo="$2"
-  local quiet="${@: -1}" && [[ "$quiet" == "-q" ]] || quiet=""
-
-  if [[ $add_repo == "epel" ]] && ! dnf repolist | grep epel 2>/dev/null; then
-    cat > /etc/yum.repos.d/epel.repo <<-EOF
-[epel]
-name=Extra Packages for Linux \$releasever - \$basearch
-baseurl=https://mirrors.aliyun.com/epel/\$releasever/Everything/\$basearch/
-gpgcheck=1
-enabled=1
-gpgkey=https://mirrors.aliyun.com/epel/RPM-GPG-KEY-EPEL-\$releasever
-EOF
-  fi
-
-  if ! rpm -q "$dep" &>/dev/null; then
-    if [[ -n "$offline_pkg_path" && -n "$(ls -A "$offline_pkg_path")" ]]; then
-      # rpm -Uvh --force --nodeps $quiet $offline_pkg_path/*.rpm
-      dnf install -y $quiet $offline_pkg_path/*.rpm 2>/dev/null
-    else
-      dnf install -y $quiet $dep
-    fi
-  fi
-
-  if [[ "$dep" == "parallel" ]]; then
-    timeout 10 parallel --citation <<< "will cite" &>/dev/null
-  fi
-}
-
 function _remote_ssh_passfree_config() {
   _print_line title "Plan $tag nodes ip and hostname, configure ssh passwordfree"
 
@@ -180,7 +149,7 @@ function _remote_ssh_passfree_config() {
   done
 
   _logger info "Installing sshpass ..."
-  _remote_install_rpms sshpass -q >/dev/null
+  _remote_get_resource sshpass $offline_pkg_path/rpm/sshpass -q >/dev/null
 
   while true; do
     printf "Ensure all servers have ${red}the same password ${reset}and enter it: "
@@ -362,44 +331,6 @@ function _remote_get_ip2host() {
 #### Remote execution
 #############################################
 
-function _remote_dist() {
-  local exclude_ip="$1"
-  shift
-  local -a resource_paths=("$@")
-
-  _remote_install_rpms parallel epel -q
-
-  _logger info "Will execute on remote nodes. Parallel execution is enabled by default."
-
-  _print_line split -
-  _logger info "Parallel execution will be used this time ..."
-
-  # Construct the command string to be executed
-  local cmd=""
-  for path in "${resource_paths[@]}"; do
-    cmd+="ssh -o BatchMode=yes -o ConnectTimeout=5 '$USER@{}' \"mkdir -p $(dirname $path)\" && "
-    if [[ -d "$path" ]]; then
-      cmd+="scp -r -o BatchMode=yes -o ConnectTimeout=5 '$path' '$USER@{}:$path' && "
-    elif [[ -f "$path" ]]; then
-      cmd+="scp -o BatchMode=yes -o ConnectTimeout=5 '$path' '$USER@{}:$path' && "
-    fi
-    cmd+="echo -e \"$path copied to {}\" && "
-  done
-  # remove the last redundant "&&"
-  cmd=${cmd%&& }
-  cmd+=" && ssh -o BatchMode=yes -o ConnectTimeout=5 '$USER@{}' \"ls -lh ${resource_paths[*]}\""
-
-  # Filter out the excluded IP from the list of IPs
-  local -a filtered_ips=()
-  for ip in "${!ip2host[@]}"; do
-    if [[ "$ip" != "$exclude_ip" ]]; then
-      filtered_ips+=("$ip")
-    fi
-  done
-
-  parallel -j 0 --tag --line-buffer --halt now,fail=1 "$cmd" ::: "${filtered_ips[@]}"
-}
-
 function _remote_get_resource() {
   local res_type="$1"  # rpm/download/image
   local res_name="$2"
@@ -433,6 +364,10 @@ gpgkey=https://mirrors.aliyun.com/epel/RPM-GPG-KEY-EPEL-\$releasever
 EOF
         dnf repolist
         dnf makecache --refresh
+      fi
+
+      if [[ "$res_name" == "parallel" ]]; then
+        timeout 10 parallel --citation <<< "will cite" &>/dev/null
       fi
 
       if ! rpm -q "$res_name" &>/dev/null; then
@@ -483,7 +418,7 @@ EOF
           for url in ${res_url_list[@]}; do
             if ! timeout $timeout_s wget -c "$url" -P $res_parent_path &>/dev/null; then
               read -rp "Download failed. Connection to GitHub is unstable. Upload manually? (y/n): " answer
-              [[ "$answer" =~ ^[Yy]$ ]] && { which rz || _remote_install_rpms lrzsz -q; } && rz -y
+              [[ "$answer" =~ ^[Yy]$ ]] && { which rz || _remote_get_resource rpm lrzsz $offline_pkg_path/rpm/lrzsz -q; } && rz -y
             fi
           done
         fi
@@ -516,7 +451,7 @@ EOF
         _logger warn "No $res_name offline image package detected on any nodes, try pulling online ..."
 
         while [[ $img_count -ne ${#res_img_list[@]} ]] && [[ $retries -lt $max_retries ]]; do
-          _remote_install_rpms parallel epel -q
+          _remote_get_resource parallel $offline_pkg_path/rpm/parallel -q >/dev/null
           parallel -j 4 --tag --progress "nerdctl -n $ns pull -q {}" ::: "${res_img_list[@]}" || true
 
           img_count=0
@@ -540,7 +475,7 @@ EOF
           _logger error "Failed to obtain the image for ${res_name}. "
           read -rp "Upload ${res_name}_imgs.tar.gz manually and load? (y/n): " answer
           if [[ "$answer" =~ ^[Yy]$ ]]; then
-            which rz || _remote_install_rpms lrzsz -q
+            which rz || _remote_get_resource rpm lrzsz $offline_pkg_path/rpm/lrzsz -q
             rz -y
             _remote_get_resource "image" "$res_name" "$res_parent_path" "${res_img_list[@]}"
           fi
@@ -552,6 +487,45 @@ EOF
       exit 2
       ;;
     esac
+}
+
+
+function _remote_dist() {
+  local exclude_ip="$1"
+  shift
+  local -a resource_paths=("$@")
+
+  _remote_get_resource parallel $offline_pkg_path/rpm/parallel -q >/dev/null
+
+  _logger info "Will execute on remote nodes. Parallel execution is enabled by default."
+
+  _print_line split -
+  _logger info "Parallel execution will be used this time ..."
+
+  # Construct the command string to be executed
+  local cmd=""
+  for path in "${resource_paths[@]}"; do
+    cmd+="ssh -o BatchMode=yes -o ConnectTimeout=5 '$USER@{}' \"mkdir -p $(dirname $path)\" && "
+    if [[ -d "$path" ]]; then
+      cmd+="scp -r -o BatchMode=yes -o ConnectTimeout=5 '$path' '$USER@{}:$path' && "
+    elif [[ -f "$path" ]]; then
+      cmd+="scp -o BatchMode=yes -o ConnectTimeout=5 '$path' '$USER@{}:$path' && "
+    fi
+    cmd+="echo -e \"$path copied to {}\" && "
+  done
+  # remove the last redundant "&&"
+  cmd=${cmd%&& }
+  cmd+=" && ssh -o BatchMode=yes -o ConnectTimeout=5 '$USER@{}' \"ls -lh ${resource_paths[*]}\""
+
+  # Filter out the excluded IP from the list of IPs
+  local -a filtered_ips=()
+  for ip in "${!ip2host[@]}"; do
+    if [[ "$ip" != "$exclude_ip" ]]; then
+      filtered_ips+=("$ip")
+    fi
+  done
+
+  parallel -j 0 --tag --line-buffer --halt now,fail=1 "$cmd" ::: "${filtered_ips[@]}"
 }
 
 
@@ -595,7 +569,7 @@ EOF
     echo "$(declare -p $var 2>/dev/null)" >> /tmp/${tag}_var
   done
 
-  _remote_install_rpms parallel epel -q
+  _remote_get_resource parallel $offline_pkg_path/rpm/parallel -q >/dev/null
 
   _logger info "Parallel execution: Faster deployment, but terminal output may be mixed. Suitable for many remote nodes.
 Sequential execution: View each node's process in order. Suitable for few nodes or first-time runs."
