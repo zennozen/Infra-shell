@@ -448,13 +448,13 @@ EOF
           _logger info "Detected existing $res_name rpm package locally, it will be used for install."
         fi
 
-        # rpm -Uvh --force --nodeps $quiet $res_parent_path/*.rpm || true
-        dnf install -y $quiet $res_parent_path/*.rpm 2>/dev/null || true
-
-        if ! rpm -q "$res_name" &>/dev/null; then
+        if [[ -z $(ls -A $res_parent_path 2>/dev/null) ]]; then
           _logger warn "No $res_name rpm detected on any nodes, try online install with dnf."
-          dnf install -y $quiet $res_name 2>/dev/null || { _logger error "$res_name rpm install failed!" && exit 1; }
+          dnf install -y $quiet $res_name --downloadonly --downloaddir=./
         fi
+
+        # rpm -Uvh --force --nodeps $quiet $res_parent_path/*.rpm || true
+        dnf install -y $quiet $res_parent_path/*.rpm 2>/dev/null || { _logger error "$res_name rpm install failed!" && exit 1; }
 
       else
         _logger info "$res_name rpm is already installed."
