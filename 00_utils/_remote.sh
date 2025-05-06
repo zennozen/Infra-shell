@@ -339,7 +339,7 @@ function _remote_get_resource() {
     local add_repo="$4" && \
     local quiet="${@: -1}" && [[ "$quiet" == "-q" ]] || quiet=""
   [[ $res_type == "download" ]] && \
-    local res_url_list=("${@:4}") && \
+    local res_url_list=("${@:4}")
   [[ $res_type == "image" ]] && \
     local ns="$4" && \
     local res_img_list=("${@:5}") && \
