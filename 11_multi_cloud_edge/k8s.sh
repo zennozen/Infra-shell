@@ -199,10 +199,10 @@ EOF
   lsmod | grep -E "br_netfilter|overlay"
 
   _logger info "2.6 Enable kernel parameters such as routing forwarding, bridge filtering, and a preference to avoid using swap space"
-  sed -i '/^net.ipv4.ip_forward/s/0/1/g' /etc/sysctl.conf && sysctl -p
   tee /etc/sysctl.d/k8s.conf <<-EOF
 net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
 vm.swappiness = 0
 vm.overcommit_memory = 1
 vm.panic_on_oom = 0

@@ -56,10 +56,10 @@ function install() {
   lsmod | grep "br_netfilter"
 
   _logger info "1.2 Enable kernel routing forwarding, bridge filtering, and prefer to avoid using swap space, etc."
-  sed -i '/^net.ipv4.ip_forward/s/0/1/g' /etc/sysctl.conf && sysctl -p
   tee /etc/sysctl.d/container.conf <<-EOF
 net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
 vm.swappiness = 0
 vm.overcommit_memory = 1
 vm.panic_on_oom = 0
