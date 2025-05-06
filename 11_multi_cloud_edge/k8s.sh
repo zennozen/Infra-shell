@@ -490,7 +490,7 @@ function install_calico() {
   kubectl create -f $calico_config_path/tigera-operator.yaml
   _chk_pod tigera-operator
 
-  # update pod subnet, images repo url
+  # update pod subnet, images repo url, nodeAddressAutodetection
   local iface="$(ip addr | grep "$SRV_IP" | awk '{print $NF}')"
   local spec_line=$(awk '/spec:/ { print NR; exit }' "$calico_config_path/custom-resources.yaml")
   sed -i \

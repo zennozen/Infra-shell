@@ -83,6 +83,10 @@ SRV_IP="$(ip -4 addr show | grep inet | grep -v 127.0.0.1 | awk 'NR==1 {print $2
 #############################################
 #### Remote passwordless setup
 #############################################
+# enable dnf rpm pkg cache
+if ! grep -q '^keepcache=1' /etc/dnf/dnf.conf; then
+  echo "keepcache=1" | tee >> /etc/dnf/dnf.conf
+fi
 
 function _remote_install_rpms() {
   local dep="$1"
@@ -531,7 +535,7 @@ EOF
 
         if [[ $img_count -eq ${#res_img_list[@]} ]]; then
           _logger info "The image for $res_name has been obtained."
-          nerdctl -n $ns save -o $res_name.tar.gz ${res_img_list[@]}
+          nerdctl -n $ns save -o ${res_name}_imgs.tar.gz ${res_img_list[@]}
         else
           _logger error "Failed to obtain the image for ${res_name}. "
           read -rp "Upload ${res_name}_imgs.tar.gz manually and load? (y/n): " answer
