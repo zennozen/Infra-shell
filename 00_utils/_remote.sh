@@ -414,7 +414,7 @@ function _remote_get_resource() {
     local retries=0
   local max_retries=3
 
-  mkdir -p $(dirname $res_parent_path) && cd $_
+  mkdir -p $res_parent_path && cd $_
   case $res_type in
     rpm)
       if [[ $add_repo == "epel" ]] && ! dnf repolist | grep epel 2>/dev/null; then
