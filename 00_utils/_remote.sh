@@ -373,7 +373,7 @@ EOF
           for ip in "${!ip2host[@]}"; do
             if ssh "$USER@$ip" "[[ -n \"\$(ls -A $res_parent_path 2>/dev/null)\" ]]"; then
               _logger info "$res_name rpm for ${ip2host[$ip]}, pulling and installing ..."
-              scp -r $USER@$ip:$res_parent_path $res_parent_path
+              scp -r $USER@$ip:$res_parent_path $(dirname $res_parent_path)
               break
             else
               _logger warn "no $res_name rpm detected in ${ip2host[$ip]}."
@@ -406,7 +406,7 @@ EOF
         for ip in "${!ip2host[@]}"; do
           if ssh "$USER@$ip" "[[ -n \"\$(ls -A $res_parent_path 2>/dev/null)\" ]]"; then
             _logger info "$res_name for ${ip2host[$ip]}, pulling ..."
-            scp -r $USER@$ip:$res_parent_path $res_parent_path
+            scp -r $USER@$ip:$res_parent_path $(dirname $res_parent_path)
             break
           else
             _logger warn "no $res_name rpm detected in ${ip2host[$ip]}."
