@@ -366,10 +366,6 @@ EOF
         dnf makecache --refresh
       fi
 
-      if [[ "$res_name" == "parallel" ]]; then
-        timeout 10 parallel --citation <<< "will cite" &>/dev/null
-      fi
-
       if ! rpm -q "$res_name" &>/dev/null; then
         _logger info "No $res_name installed detected, trying to install"
 
@@ -395,6 +391,9 @@ EOF
         # rpm -Uvh --force --nodeps $quiet $res_parent_path/*.rpm || true
         dnf install -y $quiet $res_parent_path/*.rpm 2>/dev/null || { _logger error "$res_name rpm install failed!" && exit 1; }
 
+        if [[ "$res_name" == "parallel" ]]; then
+          timeout 10 parallel --citation <<< "will cite" &>/dev/null
+        fi
       else
         _logger info "$res_name rpm is already installed."
       fi
@@ -416,7 +415,7 @@ EOF
         if [[ -z $(ls -A $res_parent_path 2>/dev/null) ]]; then
           _logger warn "No $res_name detected on any nodes, try to download with wget, timeout limit: $timeout_s seconds ..."
           for url in ${res_url_list[@]}; do
-            if ! timeout $timeout_s wget -q -c "$url" -P $res_parent_path; then
+            if ! timeout $timeout_s wget --progress=bar -c "$url" -P $res_parent_path; then
               read -rp "Download failed. Connection to GitHub is unstable. Upload manually? (y/n): " answer
               [[ "$answer" =~ ^[Yy]$ ]] && { which rz || _remote_get_resource rpm lrzsz $offline_pkg_path/rpm/lrzsz -q; } && rz -y
             fi
