@@ -87,6 +87,8 @@ function plan_nodes() {
 
   _print_line title "1. Prepare some resources and tools"
 
+  which rz &>/dev/null || _remote_get_resource rpm lrzsz $offline_pkg_path/rpm/lrzsz -q &>/dev/null
+
   case $scene in
     cluster)
       # obtain the IP address of the initialization node
