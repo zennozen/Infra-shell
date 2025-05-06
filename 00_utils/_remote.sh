@@ -373,7 +373,7 @@ EOF
       if ! rpm -q "$res_name" &>/dev/null; then
         _logger info "No $res_name installed detected, trying to install"
 
-        if [[ -z $(ls -A $res_parent_path 2>/dev/null) ]] || grep "# $tag ssh passfree start" /etc/hosts; then
+        if [[ -z $(ls -A $res_parent_path 2>/dev/null) ]] && grep "# $tag ssh passfree start" /etc/hosts; then
           for ip in "${!ip2host[@]}"; do
             if ssh "$USER@$ip" "[[ -n \"\$(ls -A $res_parent_path 2>/dev/null)\" ]]"; then
               _logger info "$res_name rpm for ${ip2host[$ip]}, pulling and installing ..."
