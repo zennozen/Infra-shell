@@ -482,7 +482,7 @@ function install_calico() {
 
   _print_line title "8. Install the Calico network plugin to connect node networks (current machine: $(hostname))"
 
-  _remote_get_resource download calico $offline_pkg_path/download/calico $calico_url
+  _remote_get_resource download calico $offline_pkg_path/download/calico ${calico_url[@]}
   mkdir -p $calico_config_path
   cp -v $offline_pkg_path/download/calico/* $calico_config_path
 
@@ -592,7 +592,7 @@ function _install_helm() {
     "https://files.m.daocloud.io/get.helm.sh/helm-v${latest_ver}-linux-amd64.tar.gz"
   )
     
-  _remote_get_resource download helm $offline_pkg_path/download/helm $helm_url
+  _remote_get_resource download helm $offline_pkg_path/download/helm ${helm_url[@]}
   tar -zxvf $offline_pkg_path/download/helm/helm-${latest_ver}-linux-amd64.tar.gz -C /tmp --wildcards --no-anchored 'helm'
   mv /tmp/linux-amd64/helm /usr/local/bin/
   helm version
