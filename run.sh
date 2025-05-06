@@ -12,10 +12,12 @@ which wget || dnf install -y wget
 which unzip || dnf install -y unzip
 wget -c $PROJ_URL && unzip $BRANCH.zip && rm -rf $_
 
-echo -e "Usage: 
-cd Infra-shell-$BRANCH
-bash build ls
-bash build gr k8s.sh
+echo -e "\033[1;32m
+Usage: 
+    cd Infra-shell-$BRANCH
+    bash build ls
+    bash build gr k8s.sh
 
-cd output
-bash k8s.sh"
+    cd output
+    bash k8s.sh
+\033[0m"
