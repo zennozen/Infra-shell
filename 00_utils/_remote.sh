@@ -414,6 +414,7 @@ function _remote_get_resource() {
     local retries=0
   local max_retries=3
 
+  mkdir -p $(dirname $res_parent_path) && cd $_
   case $res_type in
     rpm)
       if [[ $add_repo == "epel" ]] && ! dnf repolist | grep epel 2>/dev/null; then
@@ -432,7 +433,6 @@ EOF
 
       if ! rpm -q "$res_name" &>/dev/null; then
         _logger info "No $res_name installed detected, trying to install"
-        mkdir -p $(dirname $res_parent_path) && cd $_
 
         if [[ -z $(ls -A $res_parent_path 2>/dev/null) ]]; then
           for ip in "${!ip2host[@]}"; do
@@ -463,7 +463,6 @@ EOF
     download)
       if [[ -z $(ls -A $res_parent_path 2>/dev/null) ]]; then
         _logger warn "No local $res_name resource detected, try to get"
-        mkdir -p $(dirname $res_parent_path) && cd $_
 
         for ip in "${!ip2host[@]}"; do
           if ssh "$USER@$ip" "[[ -n \"\$(ls -A $res_parent_path 2>/dev/null)\" ]]"; then
@@ -495,7 +494,6 @@ EOF
     image)
       if [[ ! -f $img_file ]]; then
         _logger warn "No local $res_name offline image package detected, try to get ..."
-        mkdir -p $res_parent_path
 
         for ip in "${!ip2host[@]}"; do
           if ssh "$USER@$ip" "test -f $img_file 2>/dev/null"; then
@@ -533,6 +531,7 @@ EOF
 
         if [[ $img_count -eq ${#res_img_list[@]} ]]; then
           _logger info "The image for $res_name has been obtained."
+          nerdctl -n $ns save $res_name.tar.gz ${res_img_list[@]}
         else
           _logger error "Failed to obtain the image for ${res_name}. "
           read -rp "Upload ${res_name}_imgs.tar.gz manually and load? (y/n): " answer
