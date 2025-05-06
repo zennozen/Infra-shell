@@ -348,9 +348,10 @@ function _remote_get_resource() {
     local retries=0
   local max_retries=3
 
-  mkdir -p $res_parent_path && cd $_
+  mkdir -p $res_parent_path
   case $res_type in
     rpm)
+      cd $res_parent_path
       if [[ $add_repo == "epel" ]] && ! dnf repolist | grep epel 2>/dev/null; then
         _logger warn "No epel repo, will auto install epel yum source."
         tee /etc/yum.repos.d/epel.repo <<-EOF
@@ -368,7 +369,7 @@ EOF
       if ! rpm -q "$res_name" &>/dev/null; then
         _logger info "No $res_name installed detected, trying to install"
 
-        if [[ -z $(ls -A $res_parent_path 2>/dev/null) ]] && grep "# $tag ssh passfree start" /etc/hosts; then
+        if [[ -z $(ls -A $res_parent_path 2>/dev/null) ]] && grep "# $tag ssh passfree start" /etc/hosts >/dev/null; then
           for ip in "${!ip2host[@]}"; do
             if ssh "$USER@$ip" "[[ -n \"\$(ls -A $res_parent_path 2>/dev/null)\" ]]"; then
               _logger info "$res_name rpm for ${ip2host[$ip]}, pulling and installing ..."
@@ -398,6 +399,7 @@ EOF
       fi
       ;;
     download)
+      cd $res_parent_path
       if [[ -z $(ls -A $res_parent_path 2>/dev/null) ]]; then
         _logger warn "No local $res_name resource detected, try to get"
 
@@ -429,6 +431,7 @@ EOF
       fi
       ;;
     image)
+      cd $res_parent_path
       if [[ ! -f $img_file ]]; then
         _logger warn "No local $res_name offline image package detected, try to get ..."
 
