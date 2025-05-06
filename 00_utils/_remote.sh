@@ -336,12 +336,12 @@ function _remote_get_resource() {
   local res_name="$2"
   local res_parent_path="$3"
   [[ $res_type == "rpm" ]] && \
-    local add_repo="$4"
+    local add_repo="$4" && \
     local quiet="${@: -1}" && [[ "$quiet" == "-q" ]] || quiet=""
   [[ $res_type == "download" ]] && \
     local res_url_list=("${@:4}") && \
   [[ $res_type == "image" ]] && \
-    local ns="$4"
+    local ns="$4" && \
     local res_img_list=("${@:5}") && \
     local img_file="$res_parent_path/${res_name}_imgs.tar.gz" && \
     local img_count=0 && \
