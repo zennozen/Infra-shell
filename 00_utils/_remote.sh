@@ -149,7 +149,7 @@ function _remote_ssh_passfree_config() {
   done
 
   _logger info "Installing sshpass ..."
-  _remote_get_resource sshpass $offline_pkg_path/rpm/sshpass -q >/dev/null
+  _remote_get_resource rpm sshpass $offline_pkg_path/rpm/sshpass -q >/dev/null
 
   while true; do
     printf "Ensure all servers have ${red}the same password ${reset}and enter it: "
@@ -451,7 +451,7 @@ EOF
         _logger warn "No $res_name offline image package detected on any nodes, try pulling online ..."
 
         while [[ $img_count -ne ${#res_img_list[@]} ]] && [[ $retries -lt $max_retries ]]; do
-          _remote_get_resource parallel $offline_pkg_path/rpm/parallel -q >/dev/null
+          _remote_get_resource rpm parallel $offline_pkg_path/rpm/parallel -q >/dev/null
           parallel -j 4 --tag --progress "nerdctl -n $ns pull -q {}" ::: "${res_img_list[@]}" || true
 
           img_count=0
@@ -477,7 +477,7 @@ EOF
           if [[ "$answer" =~ ^[Yy]$ ]]; then
             which rz || _remote_get_resource rpm lrzsz $offline_pkg_path/rpm/lrzsz -q
             rz -y
-            _remote_get_resource "image" "$res_name" "$res_parent_path" "${res_img_list[@]}"
+            _remote_get_resource image $res_name $res_parent_path ${res_img_list[@]}
           fi
         fi
       fi
@@ -495,7 +495,7 @@ function _remote_dist() {
   shift
   local -a resource_paths=("$@")
 
-  _remote_get_resource parallel $offline_pkg_path/rpm/parallel -q >/dev/null
+  _remote_get_resource rpm parallel $offline_pkg_path/rpm/parallel -q >/dev/null
 
   _logger info "Will execute on remote nodes. Parallel execution is enabled by default."
 
@@ -569,7 +569,7 @@ EOF
     echo "$(declare -p $var 2>/dev/null)" >> /tmp/${tag}_var
   done
 
-  _remote_get_resource parallel $offline_pkg_path/rpm/parallel -q >/dev/null
+  _remote_get_resource rpm parallel $offline_pkg_path/rpm/parallel -q >/dev/null
 
   _logger info "Parallel execution: Faster deployment, but terminal output may be mixed. Suitable for many remote nodes.
 Sequential execution: View each node's process in order. Suitable for few nodes or first-time runs."
