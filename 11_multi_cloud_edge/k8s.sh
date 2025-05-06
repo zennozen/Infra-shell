@@ -491,7 +491,7 @@ function install_calico() {
   _chk_pod tigera-operator
 
   # update pod subnet, images repo url
-  local iface=$(nmcli con show | grep ethernet | awk '{print $4}')
+  local iface="$(ip addr | grep "$SRV_IP" | awk '{print $NF}')"
   local spec_line=$(awk '/spec:/ { print NR; exit }' "$calico_config_path/custom-resources.yaml")
   sed -i \
     -e "${spec_line}a\  registry: \"$INIT_NODE_IP:5000\"\n  imagePath: \"calico\"\n  imagePrefix: \"\"" \
