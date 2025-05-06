@@ -416,7 +416,7 @@ EOF
         if [[ -z $(ls -A $res_parent_path 2>/dev/null) ]]; then
           _logger warn "No $res_name detected on any nodes, try to download with wget, timeout limit: $timeout_s seconds ..."
           for url in ${res_url_list[@]}; do
-            if ! timeout $timeout_s wget -c "$url" -P $res_parent_path &>/dev/null; then
+            if ! timeout $timeout_s wget -q -c "$url" -P $res_parent_path; then
               read -rp "Download failed. Connection to GitHub is unstable. Upload manually? (y/n): " answer
               [[ "$answer" =~ ^[Yy]$ ]] && { which rz || _remote_get_resource rpm lrzsz $offline_pkg_path/rpm/lrzsz -q; } && rz -y
             fi
