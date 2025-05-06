@@ -452,7 +452,7 @@ EOF
         _logger warn "No $res_name offline image package detected on any nodes, try pulling online ..."
 
         while [[ $img_count -ne ${#res_img_list[@]} ]] && [[ $retries -lt $max_retries ]]; do
-          _remote_get_resource rpm parallel $offline_pkg_path/rpm/parallel -q >/dev/null
+          _remote_get_resource rpm parallel $offline_pkg_path/rpm/parallel -q >/dev/null && cd $res_parent_path
           parallel -j 4 --tag --progress "nerdctl -n $ns pull -q {}" ::: "${res_img_list[@]}" || true
 
           img_count=0
@@ -476,7 +476,7 @@ EOF
           _logger error "Failed to obtain the image for ${res_name}. "
           read -rp "Upload ${res_name}_imgs.tar.gz manually and load? (y/n): " answer
           if [[ "$answer" =~ ^[Yy]$ ]]; then
-            which rz || _remote_get_resource rpm lrzsz $offline_pkg_path/rpm/lrzsz -q
+            which rz || { _remote_get_resource rpm lrzsz $offline_pkg_path/rpm/lrzsz -q && cd $res_parent_path; }
             rz -y
             _remote_get_resource image $res_name $res_parent_path ${res_img_list[@]}
           fi
