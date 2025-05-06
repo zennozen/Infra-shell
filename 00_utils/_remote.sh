@@ -77,6 +77,9 @@
 # source "$script_path/_print.sh"
 # source "$script_path/_logger.sh"
 
+# define golabal variables
+SRV_IP="$(ip -4 addr show | grep inet | grep -v 127.0.0.1 | awk 'NR==1 {print $2}' | cut -d'/' -f1)"
+
 #############################################
 #### Remote passwordless setup
 #############################################
@@ -127,6 +130,11 @@ function _remote_ssh_passfree_config() {
     hostname=$(echo "$line" | awk '{print $2}')
     ip2host["$ip"]="$hostname"
   done
+
+  if [[ -z "${ip2host[$SRV_IP]}" ]]; then
+    _logger error "If the primary network card's IP is not in the cluster nodes, the installation will exit."
+    exit 1
+  fi
 
   _logger info "2. Get and identify the host for one-way password-free login"
 
