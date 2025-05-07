@@ -255,7 +255,7 @@ function install_kubeX() {
   _logger info "4.1 Install socat to enable port forwarding and container communication within the Kubernetes cluster"
   _remote_get_resource rpm socat $offline_pkg_path/rpm/socat -q
 
-  if [[ -z $(ls -A $offline_pkg_path/rpm/kubeadm-$K8S_VER &>/dev/null) ]]; then
+  if [[ -z $(ls -A $offline_pkg_path/rpm/kubeadm-$K8S_VER) ]] &>/dev/null; then
     _logger info "4.2 Add the k8s YUM mirror source when online"
     tee /etc/yum.repos.d/kubernetes.repo <<-EOF
 [kubernetes]

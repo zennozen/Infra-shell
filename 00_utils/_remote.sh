@@ -369,9 +369,9 @@ EOF
       if ! rpm -q "$res_name" &>/dev/null; then
         _logger info "No $res_name installed detected, trying to install"
 
-        if [[ -z $(ls -A $res_parent_path 2>/dev/null) ]] && grep "# $tag ssh passfree start" /etc/hosts >/dev/null; then
+        if [[ -z $(ls -A $res_parent_path) ]] &>/dev/null && grep "# $tag ssh passfree start" /etc/hosts >/dev/null; then
           for ip in "${!ip2host[@]}"; do
-            if ssh "$USER@$ip" "[[ -n \"\$(ls -A $res_parent_path 2>/dev/null)\" ]]"; then
+            if ssh "$USER@$ip" "[[ -n \"\$(ls -A $res_parent_path)\" ]] &>/dev/null"; then
               _logger info "$res_name rpm for ${ip2host[$ip]}, pulling and installing ..."
               scp -r $USER@$ip:$res_parent_path $(dirname $res_parent_path)
               break
@@ -381,7 +381,7 @@ EOF
           done
         fi
 
-        if [[ -z $(ls -A $res_parent_path 2>/dev/null) ]]; then
+        if [[ -z $(ls -A $res_parent_path ) ]] &>/dev/null; then
           _logger warn "No $res_name rpm detected on any nodes, try online install with dnf."
           dnf install -y $quiet $res_name --downloadonly --downloaddir=$res_parent_path || true
         fi
@@ -398,11 +398,11 @@ EOF
       ;;
     download)
       cd $res_parent_path
-      if [[ -z $(ls -A $res_parent_path 2>/dev/null) ]]; then
+      if [[ -z $(ls -A $res_parent_path ) ]] &>/dev/null; then
         _logger warn "No local $res_name resource detected, try to get"
 
         for ip in "${!ip2host[@]}"; do
-          if ssh "$USER@$ip" "[[ -n \"\$(ls -A $res_parent_path 2>/dev/null)\" ]]"; then
+          if ssh "$USER@$ip" "[[ -n \"\$(ls -A $res_parent_path)\" ]] &>/dev/null"; then
             _logger info "$res_name for ${ip2host[$ip]}, pulling ..."
             scp -r $USER@$ip:$res_parent_path $(dirname $res_parent_path)
             break
@@ -411,7 +411,7 @@ EOF
           fi
         done
 
-        if [[ -z $(ls -A $res_parent_path 2>/dev/null) ]]; then
+        if [[ -z $(ls -A $res_parent_path) ]] &>/dev/null; then
           _logger warn "No $res_name detected on any nodes, try to download with wget ..."
           for url in ${res_url_list[@]}; do
             if ! wget --progress=bar -c "$url" -P $res_parent_path; then
@@ -421,7 +421,7 @@ EOF
           done
         fi
 
-        [[ -n $(ls -A $res_parent_path 2>/dev/null) ]] || { \
+        [[ -n $(ls -A $res_parent_path ) ]] &>/dev/null || { \
           _logger error "Failed to get $res_name. Please manually place it at $res_parent_path and rerun the script." && \
           return 1; }
       else
