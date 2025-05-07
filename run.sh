@@ -5,16 +5,15 @@
 set -e
 
 GITHUB_PROXY="https://ghproxy.net"
-BRANCH=$1
-PROJ_URL="$GITHUB_PROXY/https://github.com/zennozen/Infra-shell/archive/refs/heads/$BRANCH.zip"
+LATEST_VER="$(curl -s "https://api.github.com/repos/zennozen/Infra-shell/releases/latest" | awk -F'"|v' '/tag_name/{printf $5}')"
+RELEASE_URL="$GITHUB_PROXY/https://github.com/zennozen/Infra-shell/archive/refs/tags/v$LATEST_VER.tar.gz"
 
-which wget || dnf install -y wget
-which unzip || dnf install -y unzip
-wget -c $PROJ_URL && unzip $BRANCH.zip && rm -rf $_
+curl -C - -L -o Infra-shell_v$LATEST_VER.tar.gz "$RELEASE_URL"
+tar -zxf Infra-shell_v$LATEST_VER.tar.gz
 
 echo -e "\033[1;32m
 Usage: 
-    cd Infra-shell-$BRANCH
+    cd Infra-shell-$LATEST_VER && ls -l
     bash build ls
     bash build gr k8s.sh
 
