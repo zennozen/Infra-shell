@@ -101,6 +101,7 @@ function plan_nodes() {
         if ! which rz &>/dev/null; then
           _logger info "Try get and install rpm pkg: lrzsz"
           if ! _remote_get_resource rpm lrzsz $offline_pkg_path/rpm/lrzsz -q &>/dev/null; then
+            rm -rf $offline_pkg_path
             _logger error "lrzsz install failed, please manually upload k8s_offline_${K8S_V}.tar.gz to /usr/local/src."
             exit 1
           fi
@@ -254,9 +255,9 @@ function install_kubeX() {
   _logger info "4.1 Install socat to enable port forwarding and container communication within the Kubernetes cluster"
   _remote_get_resource rpm socat $offline_pkg_path/rpm/socat -q
 
-  if [[ -z $(ls -A kubeadm-$K8S_VER $offline_pkg_path/rpm/kubeadm-$K8S_VER &>/dev/null) ]]; then
+  if [[ -z $(ls -A $offline_pkg_path/rpm/kubeadm-$K8S_VER &>/dev/null) ]]; then
     _logger info "4.2 Add the k8s YUM mirror source when online"
-    tee /etc/yum.repos.d/kubernetes.repo << EOF
+    tee /etc/yum.repos.d/kubernetes.repo <<-EOF
 [kubernetes]
 name=Kubernetes
 baseurl=https://mirrors.aliyun.com/kubernetes-new/core/stable/v$K8S_V/rpm/
