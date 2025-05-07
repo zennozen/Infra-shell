@@ -22,6 +22,9 @@ blue="\033[1;36m"
 gray="\033[1;90m"
 reset="\033[0m"
 
+########################################
+## General print line function
+########################################
 function _print_line() {
   local type="$1"
   local count="$3"
@@ -56,6 +59,7 @@ function _print_line() {
       printf "Invalid option $*\n"
       printf "${green}Usage: ${reset}\n"
       printf "    ${green}$FUNCNAME title${gray}/split ${green}-${gray}/=/# ${green}row_num${reset}\n"
-      exit 1 ;;
+      return 2
+      ;;
   esac
 }

@@ -83,14 +83,20 @@ SRV_IP="$(ip -4 addr show | grep inet | grep -v 127.0.0.1 | awk 'NR==1 {print $2
 #############################################
 #### Remote passwordless setup
 #############################################
-# enable dnf rpm pkg cache
+
+# Enable the DNF RPM package cache to achieve offline installation of related packages
 if ! grep -q '^keepcache=1' /etc/dnf/dnf.conf; then
   echo "keepcache=1" | tee >> /etc/dnf/dnf.conf
 fi
 
-function _remote_ssh_passfree_config() {
+#############################################
+## General SSH passwordless function: 
+##   Plan for passwordless authentication and hosts setup on multiple nodes
+#############################################
+function _d_remote_ssh_passfree_config() {
   _print_line title "Plan $tag nodes ip and hostname, configure ssh passwordfree"
 
+  # Get ips and hostnames list
   _logger info "1. Get the list of IP addresses and hostnames from user input"
   echo -e "${green}Enter IPs and hostnames, one per line, an empty line completes the input, example:"
   echo -e "${gray}192.168.85.121 server-01\n192.168.85.122 server-02\n192.168.85.123 server-03${reset}"
@@ -109,10 +115,9 @@ function _remote_ssh_passfree_config() {
     return 1
   fi
 
+  # Support one-way passwordless
   _logger info "2. Get and identify the host for one-way password-free login"
-
   declare -a matched_one_way_hosts
-
   while true; do
     echo -e "${green}Please enter the hostname of the host that only allows one-way password-free login to other hosts,"
     printf "${green}(e.g., ${red}master/controller${green}) [Enter for none]: ${reset}"
@@ -172,10 +177,11 @@ function _remote_ssh_passfree_config() {
     fi
   done
 
+  # Configure password-free SSH login
   _print_line split blank
   _logger info "3. Start configuring password-free SSH login"
 
-  # Generate a ssh key pair
+  # generate a ssh key pair
   _logger info "3.1 Start generate a ssh key pair"
 
   for ip in "${!ip2host[@]}"; do
@@ -183,11 +189,11 @@ function _remote_ssh_passfree_config() {
 mkdir -p ${HOME}/.ssh
 [[ -f ${private_key_file} ]] || ssh-keygen -t ed25519 -b 4096 -N '' -f ${private_key_file} -q
 EOF
-  # Collect the public key from current node
+  # collect the public key from current node
   ssh_keys[$ip]=$(sshpass -p "$srv_passwd" ssh -q -o StrictHostKeyChecking=no -o LogLevel=QUIET "$ip" "cat ${public_key_file}")
   done
 
-  # Add hosts and authorized_key
+  # distribute hosts and authorized_key
   _logger info "3.2 Start add hosts and authorized_key"
 
   for ip in "${!ip2host[@]}"; do
@@ -216,7 +222,7 @@ EOF
     sshpass -p "$srv_passwd" ssh -q -o StrictHostKeyChecking=no -o LogLevel=QUIET "$ip" "bash /tmp/cmd"
   done
 
-  # Add known_hosts
+  # distribute known_hosts
   _logger info "3.3 Start add known_hosts"
 
   for ip in "${matched_one_way_ips[@]}"; do
@@ -271,7 +277,10 @@ EOF
   _logger info "SSH passwordless login configuration succeeded!\n"
 }
 
-function _remote_ssh_passfree_undo() {
+############################################
+## General passwordless fallback function
+############################################
+function d_remote_ssh_passfree_undo() {
   # clear ssh passfree
   sed -i "/$tag/d" ${auth_key_file} ${known_hosts_file}
   # clear hosts
@@ -281,6 +290,9 @@ function _remote_ssh_passfree_undo() {
   _logger info "SSH passwordless login has been successfully undone!\n"
 }
 
+###########################################
+## General SSH passwordless function
+###########################################
 function _remote_ssh_passfree() {
   local tag=$2
   local -A ip2host
@@ -293,11 +305,11 @@ function _remote_ssh_passfree() {
   case $1 in
     config)
       shift
-      _remote_ssh_passfree_config
+      d_remote_ssh_passfree_config
       ;;
     undo)
       shift
-      _remote_ssh_passfree_undo
+      d_remote_ssh_passfree_undo
       ;;
     *)
       printf "Invalid option $*\n"
@@ -310,9 +322,9 @@ function _remote_ssh_passfree() {
 
 
 #############################################
-#### Remote metadata retrieval
+## General remote metadata acquisition function: 
+##   Get IP addresses and hostnames of passwordless hosts
 #############################################
-
 function _remote_get_ip2host() {
   if [[ ${#ip2host[@]} -eq 0 ]]; then
     # get ip and host from /etc/hosts and save to ip2host
@@ -328,9 +340,9 @@ function _remote_get_ip2host() {
 
 
 #############################################
-#### Remote execution
+## General remote resource acquisition function: 
+##   Supports offline and online acquisition of RPM, download, and image resources
 #############################################
-
 function _remote_get_resource() {
   local res_type="$1"  # rpm/download/image
   local res_name="$2"
@@ -352,6 +364,7 @@ function _remote_get_resource() {
   case $res_type in
     rpm)
       cd $res_parent_path
+      # default add epel repo
       if [[ $add_repo == "epel" ]] && ! dnf repolist | grep epel 2>/dev/null; then
         _logger warn "No epel repo, will auto install epel yum source."
         tee /etc/yum.repos.d/epel.repo <<-EOF
@@ -369,6 +382,7 @@ EOF
       if ! rpm -q "$res_name" &>/dev/null; then
         _logger info "No $res_name installed detected, trying to install"
 
+        # offline get rpm pkg from nodes's $res_parent_path
         if [[ -z $(ls -A $res_parent_path) ]] &>/dev/null && grep "# $tag ssh passfree start" /etc/hosts >/dev/null; then
           for ip in "${!ip2host[@]}"; do
             if ssh "$USER@$ip" "[[ -n \"\$(ls -A $res_parent_path)\" ]] &>/dev/null"; then
@@ -381,11 +395,13 @@ EOF
           done
         fi
 
+        # online download rpm pkg to node local $res_parent_path
         if [[ -z $(ls -A $res_parent_path ) ]] &>/dev/null; then
           _logger warn "No $res_name rpm detected on any nodes, try online install with dnf."
           dnf install -y $quiet $res_name --downloadonly --downloaddir=$res_parent_path || true
         fi
 
+        # disable repository and install already downloaded RPM packages from $res_parent_path
         # rpm -Uvh --force --nodeps $quiet $res_parent_path/*.rpm || true
         dnf install --disablerepo=* -y $quiet $res_parent_path/*.rpm 2>/dev/null || { \
           _logger error "$res_name rpm install failed!" && return 1; }
@@ -402,6 +418,7 @@ EOF
       if [[ -z $(ls -A $res_parent_path ) ]] &>/dev/null; then
         _logger warn "No local $res_name resource detected, try to get"
 
+        # offline get download resources from nodes's $res_parent_path
         for ip in "${!ip2host[@]}"; do
           if ssh "$USER@$ip" "[[ -n \"\$(ls -A $res_parent_path)\" ]] &>/dev/null"; then
             _logger info "$res_name for ${ip2host[$ip]}, pulling ..."
@@ -412,6 +429,7 @@ EOF
           fi
         done
 
+        # online get download resources to node local $res_parent_path
         if [[ -z $(ls -A $res_parent_path) ]] &>/dev/null; then
           _logger warn "No $res_name detected on any nodes, try to download with wget ..."
           for url in ${res_url_list[@]}; do
@@ -434,6 +452,7 @@ EOF
       if [[ ! -f $img_file ]]; then
         _logger warn "No local $res_name offline image package detected, try to get ..."
 
+        # offline get image resources from nodes's $res_parent_path
         for ip in "${!ip2host[@]}"; do
           if ssh "$USER@$ip" "test -f $img_file 2>/dev/null"; then
             _logger info "$res_name offline image package for ${ip2host[$ip]}, pulling and loading ..."
@@ -448,6 +467,8 @@ EOF
       if [[ -f $img_file ]]; then
         nerdctl -n $ns load -i "$img_file"
       else
+
+        # online get image resources
         _logger warn "No $res_name offline image package detected on any nodes, try pulling online ..."
 
         while [[ $img_count -ne ${#res_img_list[@]} ]] && [[ $retries -lt $max_retries ]]; do
@@ -468,6 +489,7 @@ EOF
           fi
         done
 
+        # save image resources to node local $res_parent_path
         if [[ $img_count -eq ${#res_img_list[@]} ]]; then
           _logger info "The image for $res_name has been obtained."
           nerdctl -n $ns save -o ${res_name}_imgs.tar.gz ${res_img_list[@]}
@@ -489,7 +511,10 @@ EOF
     esac
 }
 
-
+###############################################
+## General remote resource distribution function: 
+##   Distribute specified resources to remote target nodes
+###############################################
 function _remote_dist() {
   local exclude_ip="$1"
   shift
@@ -502,7 +527,7 @@ function _remote_dist() {
   _print_line split -
   _logger info "Parallel execution will be used this time ..."
 
-  # Construct the command string to be executed
+  # construct the command string to be executed
   local cmd=""
   for path in "${resource_paths[@]}"; do
     cmd+="ssh -o BatchMode=yes -o ConnectTimeout=5 '$USER@{}' \"mkdir -p $(dirname $path)\" && "
@@ -517,7 +542,7 @@ function _remote_dist() {
   cmd=${cmd%&& }
   cmd+=" && ssh -o BatchMode=yes -o ConnectTimeout=5 '$USER@{}' \"ls -lh ${resource_paths[*]}\""
 
-  # Filter out the excluded IP from the list of IPs
+  # filter out the excluded ip from the list of ips
   local -a filtered_ips=()
   for ip in "${!ip2host[@]}"; do
     if [[ "$ip" != "$exclude_ip" ]]; then
@@ -529,10 +554,15 @@ function _remote_dist() {
 }
 
 
+##################################################
+## General remote execution function: 
+##  Distribute and execute specified scripts in parallel on remote nodes
+##################################################
 function _remote_parallel() {
-  local remote_script_path="$1"
+  local execution_mode="$1"
+  local remote_script_path="$2"
   local remote_script_name="$(basename "$remote_script_path")"
-  local exclude_ip="$2"
+  local exclude_ip="$3"
   shift 2
   local -a env_vars=()
   local -a script_args=()
@@ -571,32 +601,36 @@ EOF
 
   _remote_get_resource rpm parallel $offline_pkg_path/rpm/parallel -q >/dev/null
 
+  # execute scripts
   _logger info "Parallel execution: Faster deployment, but terminal output may be mixed. Suitable for many remote nodes.
 Sequential execution: View each node's process in order. Suitable for few nodes or first-time runs."
 
-  read -rp "Will execute on remote nodes. Enable parallel execution? (y/n) [Enter 'y' by default]: " answer
-  answer=${answer:-y}
-  _print_line split -
-
-  if [[ "$answer" =~ ^[Yy]$ ]]; then
-    _logger info "Parallel execution will be used this time ..."
-    parallel -j 0 --tag --line-buffer --halt now,fail=1 '
-      if [[ "{}" != '$exclude_ip' ]]; then
-        scp -o BatchMode=yes -o ConnectTimeout=5 '/tmp/${tag}_var' '$USER@{}:/tmp/' && echo -e "Env vars copied to {}"
-        scp -o BatchMode=yes -o ConnectTimeout=5 '$remote_script_path' '$USER@{}:' && echo -e "Script copied to {}"
-        ssh -o BatchMode=yes -o ConnectTimeout=5 '$USER@{}' "export TERM=xterm-256color; bash '/tmp/${tag}_var' && \
-          bash '$remote_script_name' '${script_args[@]}' && rm -rf '$remote_script_name'"
-      fi
-    ' ::: "${!ip2host[@]}"
-  else
-    _logger info "Sequential execution will be used this time ..."
-    for ip in "${!ip2host[@]}"; do
-      if [[ "$ip" != "$exclude_ip" ]]; then
-        scp -o BatchMode=yes -o ConnectTimeout=5 "/tmp/${tag}_var" "$USER@$ip:/tmp/" && echo -e "Env vars copied to ${ip2host[$ip]} ($ip)"
-        scp -o BatchMode=yes -o ConnectTimeout=5 "$remote_script_path" "$USER@$ip:$HOME/" && echo "script copied to ${ip2host[$ip]} ($ip)"
-        ssh -o BatchMode=yes -o ConnectTimeout=5 "$USER@$ip" "export TERM=xterm-256color; bash /tmp/${tag}_var && bash $remote_script_name \
-          ${script_args[@]} && rm -rf $remote_script_name"
-      fi
-    done
-  fi
+  case $execution_mode in
+    parallel)
+      _logger info "Parallel execution will be used this time ..."
+      parallel -j 0 --tag --line-buffer --halt now,fail=1 '
+        if [[ "{}" != '$exclude_ip' ]]; then
+          scp -o BatchMode=yes -o ConnectTimeout=5 '/tmp/${tag}_var' '$USER@{}:/tmp/' && echo -e "Env vars copied to {}"
+          scp -o BatchMode=yes -o ConnectTimeout=5 '$remote_script_path' '$USER@{}:' && echo -e "Script copied to {}"
+          ssh -o BatchMode=yes -o ConnectTimeout=5 '$USER@{}' "export TERM=xterm-256color; bash '/tmp/${tag}_var' && \
+            bash '$remote_script_name' '${script_args[@]}' && rm -rf '$remote_script_name'"
+        fi
+      ' ::: "${!ip2host[@]}"
+      ;;
+    sequential)
+      _logger info "Sequential execution will be used this time ..."
+      for ip in "${!ip2host[@]}"; do
+        if [[ "$ip" != "$exclude_ip" ]]; then
+          scp -o BatchMode=yes -o ConnectTimeout=5 "/tmp/${tag}_var" "$USER@$ip:/tmp/" && echo -e "Env vars copied to ${ip2host[$ip]} ($ip)"
+          scp -o BatchMode=yes -o ConnectTimeout=5 "$remote_script_path" "$USER@$ip:$HOME/" && echo "script copied to ${ip2host[$ip]} ($ip)"
+          ssh -o BatchMode=yes -o ConnectTimeout=5 "$USER@$ip" "export TERM=xterm-256color; bash /tmp/${tag}_var && bash $remote_script_name \
+            ${script_args[@]} && rm -rf $remote_script_name"
+        fi
+      done
+      ;;
+    *)
+      _logger error "$execution_mode is an invalid remote execution mode and will exit."
+      return 2
+      ;;
+  esac
 }

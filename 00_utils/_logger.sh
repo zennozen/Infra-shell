@@ -12,6 +12,9 @@
 # _logger error "This is an error message."
 ############################## usage #######################################
 
+####################################
+## General log printing function
+####################################
 function _logger() {
   local time_lineno="${blue}$(date +'%Y-%m-%d %H:%M:%S') [$(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}]${reset}"
 
@@ -32,6 +35,7 @@ function _logger() {
       printf "Invalid option $*\n"
       printf "${green}Usage: ${reset}\n"
       printf "    ${green}$FUNCNAME info${gray}/debug/warn/error ${green}"This is an message."${reset}\n"
-      exit 2 ;;
+      return 2
+      ;;
   esac
 }

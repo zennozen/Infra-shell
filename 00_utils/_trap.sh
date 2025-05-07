@@ -13,6 +13,10 @@
 ############################## usage #######################################
 set -o errtrace
 
+#############################################################
+## General error capture and print variable function:
+##   Capture errors and print variable values before exiting
+#############################################################
 _trap_print_env() {
   local env_vars=("$@")
 
