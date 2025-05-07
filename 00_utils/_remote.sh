@@ -387,7 +387,8 @@ EOF
         fi
 
         # rpm -Uvh --force --nodeps $quiet $res_parent_path/*.rpm || true
-        dnf install -y $quiet $res_parent_path/*.rpm 2>/dev/null || { _logger error "$res_name rpm install failed!" && return 1; }
+        dnf install --disablerepo=* -y $quiet $res_parent_path/*.rpm 2>/dev/null || { \
+          _logger error "$res_name rpm install failed!" && return 1; }
 
         if [[ "$res_name" == "parallel" ]]; then
           timeout 10 parallel --citation <<< "will cite" &>/dev/null

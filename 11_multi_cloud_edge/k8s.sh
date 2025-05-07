@@ -255,9 +255,8 @@ function install_kubeX() {
   _logger info "4.1 Install socat to enable port forwarding and container communication within the Kubernetes cluster"
   _remote_get_resource rpm socat $offline_pkg_path/rpm/socat -q
 
-  if [[ -z $(ls -A $offline_pkg_path/rpm/kubeadm-$K8S_VER) ]] &>/dev/null; then
-    _logger info "4.2 Add the k8s YUM mirror source when online"
-    tee /etc/yum.repos.d/kubernetes.repo <<-EOF
+  _logger info "4.2 Add the k8s YUM mirror source"
+  tee /etc/yum.repos.d/kubernetes.repo <<-EOF
 [kubernetes]
 name=Kubernetes
 baseurl=https://mirrors.aliyun.com/kubernetes-new/core/stable/v$K8S_V/rpm/
@@ -265,7 +264,6 @@ enabled=1
 gpgcheck=1
 gpgkey=https://mirrors.aliyun.com/kubernetes-new/core/stable/v$K8S_V/rpm/repodata/repomd.xml.key
 EOF
-  fi
 
   _logger info "4.3 Install kubeadm-$K8S_VER (include kubectl and kubelet)"
   _remote_get_resource rpm kubeadm-$K8S_VER $offline_pkg_path/rpm/kubeadm-$K8S_VER -q
