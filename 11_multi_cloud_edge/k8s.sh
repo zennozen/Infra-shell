@@ -98,7 +98,9 @@ function plan_nodes() {
       while [[ ! -f k8s_offline_${K8S_V}.tar.gz ]]; do
         read -rp "No $(dirname $offline_pkg_path)/k8s_offline_${K8S_V}.tar.gz found. Upload manually ? (y/n) [Enter 'y' by default]: " answer
         
-        which rz &>/dev/null || _remote_get_resource rpm lrzsz $offline_pkg_path/rpm/lrzsz -q &>/dev/null
+        which rz &>/dev/null || \
+          _remote_get_resource rpm lrzsz $offline_pkg_path/rpm/lrzsz -q &>/dev/null || \
+          _logger error "lrzsz install failed, please manually upload k8s_offline_${K8S_V}.tar.gz to /usr/local/src."
 
         answer=${answer:-y}
         if [[ "$answer" =~ ^[Yy]$ ]]; then
