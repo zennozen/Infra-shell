@@ -106,7 +106,7 @@ function _remote_ssh_passfree_config() {
 
   if [[ -z "${ip2host[$SRV_IP]}" ]]; then
     _logger error "If the primary network card's IP is not in the cluster nodes, the installation will exit."
-    exit 1
+    return 1
   fi
 
   _logger info "2. Get and identify the host for one-way password-free login"
@@ -250,7 +250,7 @@ EOF
     fi
   done
 
-  [[ $conn_status -eq 1 ]] ||  exit 1
+  [[ $conn_status -eq 1 ]] ||  return 1
 
   _print_line split blank
   # update hostname
@@ -258,7 +258,7 @@ EOF
 
   read -p "Sync setting hostname on each node? (y/n) [Enter for y]: " answer
   answer=${answer:-"y"}
-  [[ "$answer" =~ ^[Yy]$ ]] || { _logger error "User cancelled, exiting..." && exit 1; }
+  [[ "$answer" =~ ^[Yy]$ ]] || { _logger error "User cancelled, exiting..." && return 1; }
   for ip in "${!ip2host[@]}"; do
     if ssh -o BatchMode=yes -o ConnectTimeout=5 "$USER@$ip" "hostnamectl set-hostname ${ip2host[$ip]}"; then
       echo -e "${green}Hostname updated successfully on ${ip2host[$ip]} ($ip).${reset}"
@@ -303,7 +303,7 @@ function _remote_ssh_passfree() {
       printf "Invalid option $*\n"
       printf "${green}Usage: ${reset}\n"
       printf "    ${green}$FUNCNAME config${gray}/undo xx-cluster${reset}\n"
-      exit 1
+      return 1
       ;;
   esac
 }
@@ -379,17 +379,15 @@ EOF
               _logger warn "no $res_name rpm detected in ${ip2host[$ip]}."
             fi
           done
-        else
-          _logger info "Detected existing $res_name rpm package locally, it will be used for install."
         fi
 
         if [[ -z $(ls -A $res_parent_path 2>/dev/null) ]]; then
           _logger warn "No $res_name rpm detected on any nodes, try online install with dnf."
-          dnf install -y $quiet $res_name --downloadonly --downloaddir=$res_parent_path
+          dnf install -y $quiet $res_name --downloadonly --downloaddir=$res_parent_path || true
         fi
 
         # rpm -Uvh --force --nodeps $quiet $res_parent_path/*.rpm || true
-        dnf install -y $quiet $res_parent_path/*.rpm 2>/dev/null || { _logger error "$res_name rpm install failed!" && exit 1; }
+        dnf install -y $quiet $res_parent_path/*.rpm 2>/dev/null || { _logger error "$res_name rpm install failed!" && return 1; }
 
         if [[ "$res_name" == "parallel" ]]; then
           timeout 10 parallel --citation <<< "will cite" &>/dev/null
@@ -425,7 +423,7 @@ EOF
 
         [[ -n $(ls -A $res_parent_path 2>/dev/null) ]] || { \
           _logger error "Failed to get $res_name. Please manually place it at $res_parent_path and rerun the script." && \
-          exit 1; }
+          return 1; }
       else
         _logger info "$res_name already exists in $res_parent_path."
       fi
@@ -485,7 +483,7 @@ EOF
       ;;
     *)
       _logger error "Unknown resource type: $res_type"
-      exit 2
+      return 2
       ;;
     esac
 }
