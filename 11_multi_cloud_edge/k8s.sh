@@ -223,17 +223,21 @@ EOF
 }
 
 function install_containerd() {
-  local nerdctl_ver="${1:-$NERDCTL_VER}"
-  local nerdctl_url="$GITHUB_PROXY/https://github.com/containerd/nerdctl/releases/download/v${nerdctl_ver}/nerdctl-full-${nerdctl_ver}-linux-amd64.tar.gz"
-  _remote_get_resource download containerd $offline_pkg_path/download/containerd $nerdctl_url
-  cp -v $offline_pkg_path/download/containerd/* /usr/local/src
-  _remote_get_resource rpm git $offline_pkg_path/rpm/git -q
+  if which nerdctl 2>/dev/null && which containerd 2>/dev/null; then
+    _logger warn "containerd_with_nerdctl already install on system."
+  else
+    local nerdctl_ver="${1:-$NERDCTL_VER}"
+    local nerdctl_url="$GITHUB_PROXY/https://github.com/containerd/nerdctl/releases/download/v${nerdctl_ver}/nerdctl-full-${nerdctl_ver}-linux-amd64.tar.gz"
+    _remote_get_resource download containerd $offline_pkg_path/download/containerd $nerdctl_url
+    cp -v $offline_pkg_path/download/containerd/* /usr/local/src
+    _remote_get_resource rpm git $offline_pkg_path/rpm/git -q
 
-  cd $workdir
-  [[ -f $dep_script ]] || { cd .. && bash build gr $dep_script && cd $workdir; }
-  [[ -f $dep_script ]] || { _logger error "Missing script $dep_script in current directory. Please check." && exit 1; }
-  bash $dep_script install $nerdctl_ver || { _logger error "Script $dep_script failed, exit code $?" && exit 1; }
-  rm -rf /usr/local/src/nerdctl-full-*.tar.gz
+    cd $workdir
+    [[ -f $dep_script ]] || { cd .. && bash build gr $dep_script && cd $workdir; }
+    [[ -f $dep_script ]] || { _logger error "Missing script $dep_script in current directory. Please check." && exit 1; }
+    bash $dep_script install $nerdctl_ver || { _logger error "Script $dep_script failed, exit code $?" && exit 1; }
+    rm -rf /usr/local/src/nerdctl-full-*.tar.gz
+  fi
 
   _logger info "3.x Enable nerdctl command auto-completion"
   _remote_get_resource rpm bash-completion $offline_pkg_path/rpm/bash-completion -q
