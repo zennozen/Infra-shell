@@ -795,6 +795,7 @@ function cluster_health_chk() {
         ;;
     esac
   fi
+  echo
 
   # Export script variable definitions for later functions or future scripts to retrieve historical variable values
   declare -p DASHBOARD_TOKEN >> /tmp/${tag}_var
@@ -971,8 +972,6 @@ function main() {
     printf "    ${gray}bash ${blue}$0 ${green}dp${gray}(deploy) ${green}cluster${gray}/node 1.29${reset}\n"
     printf "    ${gray}bash ${blue}$0 ${green}reset${gray}/remove${reset}\n"
     printf "    ${gray}bash ${blue}$0 ${green}dis${reset}\n\n"
-
-    printf "${yellow}Note: The gitlab root password must comply with the security policy.\n${reset}"
   }
 
   case "$1-$2" in
