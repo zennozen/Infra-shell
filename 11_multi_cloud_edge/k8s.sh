@@ -87,8 +87,6 @@ function plan_nodes() {
 
   _print_line title "1. Prepare some resources and tools"
 
-  which rz &>/dev/null || _remote_get_resource rpm lrzsz $offline_pkg_path/rpm/lrzsz -q &>/dev/null
-
   case $scene in
     cluster)
       # obtain the IP address of the initialization node
@@ -99,6 +97,9 @@ function plan_nodes() {
       cd $(dirname $offline_pkg_path)
       while [[ ! -f k8s_offline_${K8S_V}.tar.gz ]]; do
         read -rp "No $(dirname $offline_pkg_path)/k8s_offline_${K8S_V}.tar.gz found. Upload manually ? (y/n) [Enter 'y' by default]: " answer
+        
+        which rz &>/dev/null || _remote_get_resource rpm lrzsz $offline_pkg_path/rpm/lrzsz -q &>/dev/null
+
         answer=${answer:-y}
         if [[ "$answer" =~ ^[Yy]$ ]]; then
           which rz >/dev/null || dnf install -qy lrzsz
