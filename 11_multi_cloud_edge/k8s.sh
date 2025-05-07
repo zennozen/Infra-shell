@@ -62,15 +62,19 @@ esac
 case $K8S_V in
   1.24|1.25|1.26)
     CALICO_VER="3.26.1"
+    TIGERA_VER="1.30.4"
     ;;
   1.27)
     CALICO_VER="3.27.5"
+    TIGERA_VER="1.32.12"
     ;;
   1.28)
     CALICO_VER="3.28.4"
+    TIGERA_VER="1.34.10"
     ;;
   1.29)
     CALICO_VER="3.29.3"
+    TIGERA_VER="1.36.7"
     ;;
 esac
 
@@ -375,7 +379,7 @@ function load_and_push_image() {
     "docker.io/calico/csi:v$CALICO_VER"
     "docker.io/calico/pod2daemon-flexvol:v$CALICO_VER"
     "docker.io/calico/typha:v$CALICO_VER"
-    "quay.io/tigera/operator:v1.36.7"
+    "quay.io/tigera/operator:v$TIGERA_VER"
   )
   dashboard_imgs=(
     "docker.io/kubernetesui/dashboard-auth:1.2.4"
@@ -964,7 +968,7 @@ function main() {
   function _help() {
     printf "Invalid option ${@:1}\n"
     printf "${green}Usage: ${reset}\n"
-    printf "    ${gray}bash ${blue}$0 ${green}deploy cluster${gray}/node${reset}\n"
+    printf "    ${gray}bash ${blue}$0 ${green}dp${gray}(deploy) ${green}cluster${gray}/node 1.29${reset}\n"
     printf "    ${gray}bash ${blue}$0 ${green}reset${gray}/remove${reset}\n"
     printf "    ${gray}bash ${blue}$0 ${green}dis${reset}\n\n"
 
@@ -972,7 +976,7 @@ function main() {
   }
 
   case "$1-$2" in
-    deploy-cluster)
+    dp-cluster|deploy-cluster)
       plan_nodes $2
       config_sys
       install_containerd
@@ -988,7 +992,7 @@ function main() {
       install_board
       cluster_health_chk
       ;;
-    deploy-node)
+    dp-node|deploy-node)
       plan_nodes $2
       config_sys
       install_containerd
