@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-############################## usage #######################################
+############################## import #######################################
 # tag="xx_cluster"
 # script_path="$(dirname ${BASH_SOURCE[0]})"
 #
@@ -8,68 +8,7 @@
 # source "$script_path/../00_utils/_trap.sh"
 # source "$script_path/../00_utils/_logger.sh"
 # source "$script_path/../00_utils/_remote.sh"
-#
-# # Provide an override entry for environment variables for remote execution
-# source /tmp/${tag}_var &>/dev/null || true
-#
-# function plan_nodes() {
-#   # plan cluster nodes, configure SSH passwordless, update hostnames
-#   _remote_ssh_passfree config "$tag"
-#
-#   # get ips and hosts save to ${!ip2host[@]}
-#   _remote_get_ip2host
-#
-#   # obtain the IP address of the initialization node
-#   INIT_NODE_IP="$SRV_IP"
-# }
-#
-# function remote_dist() {
-#   local -a resource_paths=(
-#     "/root/$dep_script"
-#     "$offline_pkg_path/rpm/lrzsz"
-#     "$offline_pkg_path/rpm/sshpass"
-#     "$offline_pkg_path/rpm/parallel"
-#   )
-#   local exclude_ip="$INIT_NODE_IP" # Define remote machines to exclude from the loop
-#
-#   _print_line title "Parallel remote execution"
-#
-#   # chk args
-#   _remote_get_ip2host
-#
-#   if [[ ${#ip2host[@]} -eq 0 ]]; then
-#     _logger error "The remote host IP list is empty, please run the $script_path at least once."
-#     exit 1
-#   fi
-#
-#   cp $workdir/$dep_script /root/$dep_script
-#   echo -e "rm -- "/root/\$0"" >> /root/$dep_script
-#   _remote_dist "$exclude_ip" "${resource_paths[@]}"
-# }
-#
-# function remote_parallel() {
-#   local scp_script_path=$abs_script_path
-#   local exclude_ip="$INIT_NODE_IP" # Define remote machines to exclude from the loop
-#   local -a env_vars=(ip2host INIT_NODE_IP DASHBOARD_TOKEN join_cmds tag)
-#   local -a script_args=("$@")
-#
-#   _print_line title "Parallel remote execution"
-#
-#   # chk args
-#   if grep -q -E '^source[[:space:]]+\"?[^[:space:]]+\.sh\"?' "$scp_script_path"; then
-#     _logger error "Remote script contains external dependencies, cannot execute on remote nodes."
-#     _logger error "Please generate a complete independent script first by run ${blue}bash build.sh gr $(basename $scp_script_path)"
-#     exit 1
-#   fi
-#
-#   _remote_get_ip2host
-#
-#   [[ ${#ip2host[@]} -eq 0 ]] && { \
-#     _logger error "The remote host IP list is empty, please run the $scp_script_path at least once." && exit 1; }
-#
-#   _remote_parallel "$scp_script_path" "$exclude_ip" "${env_vars[@]}" -- "${script_args[@]}"
-# }
-############################## usage #######################################
+############################## import #######################################
 
 # The dependencies will be imported by the functional script itself to avoid duplication and conflicts here.
 # script_path="$(dirname ${BASH_SOURCE[0]})"
@@ -80,37 +19,99 @@
 # define golabal variables
 SRV_IP="$(ip -4 addr show | grep inet | grep -v 127.0.0.1 | awk 'NR==1 {print $2}' | cut -d'/' -f1)"
 
-###################################################################
-#### Remote passwordless setup
-###################################################################
-
 # Enable the DNF RPM package cache to achieve offline installation of related packages
 if ! grep -q '^keepcache=1' /etc/dnf/dnf.conf; then
   echo "keepcache=1" | tee >> /etc/dnf/dnf.conf
 fi
 
-###################################################################
-## General SSH passwordless function: 
-##   Plan for passwordless authentication and hosts setup on 
-##   multiple nodes
-###################################################################
+#############################################################################
+## Function: _d_remote_ssh_passfree_config
+## Overview：General SSH passwordless function. 
+## Description:
+##   Plan for passwordless authentication and hosts setup on multiple nodes.
+##
+## Parameters:
+##   - $HOME/.hosts
+##
+## Returns:
+##   -  0: Success (get ips and hostnames, config ssh passwordfree successfully)
+##   - !0：Failure (...)
+##
+## Example:
+##   1. (Optional) create $HOME/.hosts
+##     192.168.85.111 master1
+##     192.168.85.112 master2
+##     192.168.85.113 master3
+##     192.168.85.121 node1
+##     192.168.85.122 node2
+##     192.168.85.123 node3
+##     one-way="master"
+##     sync-hostname=true
+##   2.
+##     _d_remote_ssh_passfree_config
+#############################################################################
 function _d_remote_ssh_passfree_config() {
   _print_line title "Plan $tag nodes ip and hostname, configure ssh passwordfree"
 
   # Get ips and hostnames list
-  _logger info "1. Get the list of IP addresses and hostnames from user input"
-  echo -e "${green}Enter IPs and hostnames, one per line, an empty line completes the input, example:"
-  echo -e "${gray}192.168.85.121 server-01\n192.168.85.122 server-02\n192.168.85.123 server-03${reset}"
+  _logger info "1. Get the list of IP addresses and hostnames from $HOME/.hosts file or user input."
+  echo -e "${green} $HOME/.hosts context example:${reset}"
+  echo "
+192.168.85.111 master1
+192.168.85.112 master2
+192.168.85.113 master3
+192.168.85.121 node1
+192.168.85.122 node2
+192.168.85.123 node3
+one-way=\"master\"
+sync-hostname=true
+  "
+  # from $HOME/.hosts
+  if [[ -f $HOME/.hosts ]]; then
+    _logger info "found $HOME/.hosts file, reading from it"
+    one_way_host_str=""
+    sync_hostname=true
 
-  while true; do
-    read -p "" line
-    [[ -z $line ]] && break
+    while IFS= read -r line; do
+      # skip empty lines and comments
+      [[ -z "$line" || "$line" =~ ^#.* ]] && continue
 
-    ip=$(echo "$line" | awk '{print $1}')
-    hostname=$(echo "$line" | awk '{print $2}')
-    ip2host["$ip"]="$hostname"
-  done
+      if [[ "$line" =~ ^one-way= ]]; then
+        one_way_host_str=$(echo "$line" | cut -d'=' -f2 | tr -d '"')
+        continue
+      fi
 
+      if [[ "$line" =~ ^sync-hostname= ]]; then
+        sync_hostname=$(echo "$line" | cut -d'=' -f2 | tr -d '"')
+        continue
+      fi
+
+      # validate IP address format
+      if [[ "$line" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+[[:space:]]+[a-zA-Z0-9_-]+$ ]]; then
+        ip=$(echo "$line" | awk '{print $1}')
+        hostname=$(echo "$line" | awk '{print $2}')
+        ip2host["$ip"]="$hostname"
+      else
+        echo -e "${yellow}Skipping invalid line: $line${reset}"
+      fi
+    done < "$HOME/.hosts"
+  else
+    # from user input
+    _logger info "No $HOME/.hosts file found, entering interactive input mode"
+    echo -e "${green}Enter IPs and hostnames, one per line, an empty line completes the input, example:"
+    echo -e "${gray}192.168.85.121 server-01\n192.168.85.122 server-02\n192.168.85.123 server-03${reset}"
+
+    while true; do
+      read -p "" line
+      [[ -z $line ]] && break
+
+      ip=$(echo "$line" | awk '{print $1}')
+      hostname=$(echo "$line" | awk '{print $2}')
+      ip2host["$ip"]="$hostname"
+    done
+  fi
+
+  # Exclude running the script on non-planned machines
   if [[ -z "${ip2host[$SRV_IP]}" ]]; then
     _logger error "If the primary network card's IP is not in the cluster nodes, the installation will exit."
     return 1
@@ -120,10 +121,12 @@ function _d_remote_ssh_passfree_config() {
   _logger info "2. Get and identify the host for one-way password-free login"
   declare -a matched_one_way_hosts
   while true; do
-    echo -e "${green}Please enter the hostname of the host that only allows one-way password-free login to other hosts,"
-    printf "${green}(e.g., ${red}master/controller${green}) [Enter for none]: ${reset}"
-    read -p "" one_way_host_str
-    echo
+    if [[ ! -f $HOME/.hosts ]] && [[ -z "$one_way_host_str" ]]; then
+      echo -e "${green}Please enter the hostname of the host that only allows one-way password-free login to other hosts,"
+      printf "${green}(e.g., ${red}master/controller${green}) [Enter for none]: ${reset}"
+      read -p "" one_way_host_str
+      echo
+    fi
 
     if [[ -n "$one_way_host_str" ]]; then
       matched_one_way_ips=()
@@ -157,6 +160,7 @@ function _d_remote_ssh_passfree_config() {
   _logger info "Installing sshpass ..."
   _remote_get_resource rpm sshpass $offline_pkg_path/rpm/sshpass -q >/dev/null
 
+  # Get servers password
   while true; do
     printf "Ensure all servers have ${red}the same password ${reset}and enter it: "
     read -rsp "" srv_passwd
@@ -262,28 +266,45 @@ EOF
   _print_line split blank
   # update hostname
   _logger info "4. Start update hostname on the remote host"
-
-  read -p "Sync setting hostname on each node? (y/n) [Enter for y]: " answer
-  answer=${answer:-"y"}
-  [[ "$answer" =~ ^[Yy]$ ]] || { _logger error "User cancelled, exiting..." && return 1; }
-  for ip in "${!ip2host[@]}"; do
-    if ssh -o BatchMode=yes -o ConnectTimeout=5 "$USER@$ip" "hostnamectl set-hostname ${ip2host[$ip]}"; then
-      echo -e "${green}Hostname updated successfully on ${ip2host[$ip]} ($ip).${reset}"
-    else
-      echo -e "${red}Failed to update hostname on ${ip2host[$ip]} ($ip).${reset}"
-    fi
-  done
+  if [[ -z "$sync_hostname" ]]; then
+    read -p "Sync setting hostname on each node? (y/n) [Enter for y]: " answer
+    answer=${answer:-"y"}
+    [[ "$answer" =~ ^[Yy]$ ]] || { _logger error "User cancelled, exiting..." && return 1; }
+    sync_hostname=true
+  else
+    for ip in "${!ip2host[@]}"; do
+      if ssh -o BatchMode=yes -o ConnectTimeout=5 "$USER@$ip" "hostnamectl set-hostname ${ip2host[$ip]}"; then
+        echo -e "${green}Hostname updated successfully on ${ip2host[$ip]} ($ip).${reset}"
+      else
+        echo -e "${red}Failed to update hostname on ${ip2host[$ip]} ($ip).${reset}"
+      fi
+    done
+  fi
 
   _print_line split -
   _logger info "SSH passwordless login configuration succeeded!\n"
 }
 
-###################################################################
-## General passwordless fallback function
-###################################################################
-function d_remote_ssh_passfree_undo() {
+#############################################################################
+## Function: _d_remote_ssh_passfree_undo
+## Overview：General passwordless fallback function. 
+## Description:
+##   Revert the passwordless SSH configuration on multiple nodes.
+##
+## Parameters:
+##
+## Returns:
+##   -  0: Success (clear ssh passwordfree and hosts successfully)
+##   - !0：Failure (...)
+##
+## Example:
+##   _d_remote_ssh_passfree_undo
+#############################################################################
+function _d_remote_ssh_passfree_undo() {
+
   # clear ssh passfree
   sed -i "/$tag/d" ${auth_key_file} ${known_hosts_file}
+
   # clear hosts
   sed -i "/# $tag ssh passfree start/,/# $tag ssh passfree end/d" /etc/hosts
 
@@ -291,11 +312,27 @@ function d_remote_ssh_passfree_undo() {
   _logger info "SSH passwordless login has been successfully undone!\n"
 }
 
-#####################################################################
-## General SSH passwordless function
-###################################################################
+#############################################################################
+## Function: _remote_ssh_passfree
+## Overview: General SSH passwordless function.
+## Description:
+##   Create a unified entry function for SSH passwordless configuration
+##   by calling _d_remote_ssh_passfree_config and _d_remote_ssh_passfree_undo
+##   based on the passed parameters.
+##
+## Parameters:
+##   - tag : $tag (such as: es_cluster， k8s_cluster, xxxx)
+##   -   $1: config/undo
+##
+## Returns:
+##   - 0: Success (config/clear ssh passwordfree and hosts successfully)
+##   - 1: Failure (Invalid option ... Usage ...)
+##
+## Example:
+##   tag="k8s_cluster"
+##   _remote_ssh_passfree config  /  _remote_ssh_passfree undo
+#############################################################################
 function _remote_ssh_passfree() {
-  local tag=$2
   local -A ip2host
   local -A ssh_keys
   local private_key_file="${HOME}/.ssh/id_ed25519"
@@ -306,27 +343,39 @@ function _remote_ssh_passfree() {
   case $1 in
     config)
       shift
-      d_remote_ssh_passfree_config
+      _d_remote_ssh_passfree_config
       ;;
     undo)
       shift
-      d_remote_ssh_passfree_undo
+      _d_remote_ssh_passfree_undo
       ;;
     *)
       printf "Invalid option $*\n"
       printf "${green}Usage: ${reset}\n"
       printf "    ${green}$FUNCNAME config${gray}/undo xx-cluster${reset}\n"
-      return 1
+      return 2
       ;;
   esac
 }
 
-
-################################################
-## General remote metadata acquisition function: 
-##   Get IP addresses and hostnames of 
-##   passwordless hosts
-################################################
+#############################################################################
+## Function: _remote_get_ip2host
+## Overview: General remote metadata acquisition function.
+## Description:
+##   Retrieve IP addresses and hostnames of passwordless hosts from 
+##   '/etc/hosts' based on '$tag'.
+##
+## Parameters:
+##   - tag : $tag (such as: es_cluster， k8s_cluster, xxxx)
+##
+## Returns:
+##   -  0: Success (get ips and hostnames from /etc/hosts successfully)
+##   - !0: Failure (...)
+##
+## Example:
+##   tag="k8s_cluster"
+##   _remote_get_ip2host
+#############################################################################
 function _remote_get_ip2host() {
   if [[ ${#ip2host[@]} -eq 0 ]]; then
     # get ip and host from /etc/hosts and save to ip2host
@@ -341,11 +390,63 @@ function _remote_get_ip2host() {
 }
 
 
-################################################
-## General remote resource acquisition function: 
-##   Supports offline and online acquisition of 
-##   RPM, download, and image resources
-################################################
+#############################################################################
+## Function: _remote_get_resource
+## Overview: General remote resource acquisition function.
+## Description:
+##   Supports offline or online acquisition of RPM, download, 
+##   and image resources.
+##
+## Parameters:
+##   - offline_pkg_path: $offline_pkg_path
+##   - $1: rpm/download/image
+##   - $2: resource_name (such as lrzsz, k9s, k8s_cluster )
+##   - $3: resource_offline_path ($offline_pkg_path/rpm/lrzsz, $offline_pkg_path/download/k9s, $offline_pkg_path/image/registry)
+##   - ${@:4} : view the corresponding definitions in the function
+##
+## Returns:
+##   - 0: Success (get corresponding resources successfully)
+##   - 2: Failure (...)
+##
+## Example:
+##   # get rpm
+##     offline_pkg_path="/usr/local/src/k8s_offline_$K8S_V"
+##     _remote_get_resource rpm bash-completion $offline_pkg_path/rpm/bash-completion -q
+##     for s in ipset ipvsadm; do _remote_get_resource rpm $s $offline_pkg_path/rpm/$s -q; done
+##   # get download
+##     calico_url=(
+##      # tigera-operator.yaml deploys and upgrades Calico, while custom-resources.yaml configures its behavior
+##      "$GITHUB_PROXY/https://raw.githubusercontent.com/projectcalico/calico/v$CALICO_VER/manifests/tigera-operator.yaml"
+##      "$GITHUB_PROXY/https://raw.githubusercontent.com/projectcalico/calico/v$CALICO_VER/manifests/custom-resources.yaml"
+##      )
+##     _remote_get_resource download calico $offline_pkg_path/download/calico ${calico_url[@]}
+##
+##   # get some images
+##     _remote_get_resource image registry $offline_pkg_path/image/registry default docker.io/library/registry:2
+##
+##   # get many images
+##     dashboard_imgs=(
+##       "docker.io/kubernetesui/dashboard-auth:1.2.4"
+##       "docker.io/kubernetesui/dashboard-api:1.12.0"
+##       "docker.io/kubernetesui/dashboard-web:1.6.2"
+##       "docker.io/kubernetesui/dashboard-metrics-scraper:1.2.2"
+##       "docker.io/library/kong:3.8"
+##     )
+##     kuboard_imgs=(
+##       "swr.cn-east-2.myhuaweicloud.com/kuboard/kuboard:v3"
+##       "swr.cn-east-2.myhuaweicloud.com/kuboard/etcd-host:3.4.16-2"
+##       "swr.cn-east-2.myhuaweicloud.com/kuboard-dependency/metrics-server:v0.6.2"
+##       "swr.cn-east-2.myhuaweicloud.com/kuboard-dependency/metrics-scraper:v1.0.8"
+##     )
+##     for i in k8s_cluster calico dashboard kuboard; do
+##       _logger info "Start loading $i related images ..."
+##       local imgs_array_name="${i}_imgs"
+##       declare -n imgs_ref="$imgs_array_name"
+##    
+##       printf "[$i]: %s\n" "${imgs_ref[@]}"
+##       _remote_get_resource image $i $offline_pkg_path/image/$i k8s.io "${imgs_ref[@]}"
+##     done
+#############################################################################
 function _remote_get_resource() {
   local res_type="$1"  # rpm/download/image
   local res_name="$2"
@@ -365,9 +466,10 @@ function _remote_get_resource() {
 
   mkdir -p $res_parent_path
   case $res_type in
+    # Get rpm resoures
     rpm)
       cd $res_parent_path
-      # default add epel repo
+      # support add epel repo
       if [[ $add_repo == "epel" ]] && ! dnf repolist | grep epel 2>/dev/null; then
         _logger warn "No epel repo, will auto install epel yum source."
         tee /etc/yum.repos.d/epel.repo <<-EOF
@@ -404,8 +506,9 @@ EOF
           dnf install -y $quiet $res_name --downloadonly --downloaddir=$res_parent_path || true
         fi
 
-        # disable repository and install already downloaded RPM packages from $res_parent_path
         # rpm -Uvh --force --nodeps $quiet $res_parent_path/*.rpm || true
+        # use dnf to enhance dependency handling instead of forcing upgrades or downgrades during rpm installation
+        # disable repository and install already downloaded RPM packages from $res_parent_path
         dnf install --disablerepo=* -y $quiet $res_parent_path/*.rpm 2>/dev/null || { \
           _logger error "$res_name rpm install failed!" && return 1; }
 
@@ -416,6 +519,7 @@ EOF
         _logger info "$res_name rpm is already installed."
       fi
       ;;
+    # get download resoures
     download)
       cd $res_parent_path
       if [[ -z $(ls -A $res_parent_path ) ]] &>/dev/null; then
@@ -450,6 +554,7 @@ EOF
         _logger info "$res_name already exists in $res_parent_path."
       fi
       ;;
+    # get image resoures
     image)
       cd $res_parent_path
       if [[ ! -f $img_file ]]; then
@@ -514,15 +619,36 @@ EOF
     esac
 }
 
-#################################################
-## General remote resource distribution function: 
-##   Distribute specified resources to remote 
-##   target nodes
-#################################################
+
+#############################################################################
+## Function: _remote_dist
+## Overview: General remote resource distribution function.
+## Description:
+##   Distribute specified resources to remote target nodes.
+##
+## Parameters:
+##   - $1: exclude_ip
+##   - ${@:2}: resource_paths
+##
+## Returns:
+##   -  0: Success (distribute corresponding resources successfully)
+##   - !0: Failure (...)
+##
+## Example:
+##   exclude_ip="$INIT_NODE_IP"
+##   resource_paths=(
+##     "$offline_pkg_path/rpm/lrzsz"
+##     "$offline_pkg_path/rpm/sshpass"
+##     "$offline_pkg_path/rpm/parallel"
+##   )
+##
+##   # chk args
+##   _remote_get_ip2host
+##   _remote_dist "$exclude_ip" "${resource_paths[@]}"
+#############################################################################
 function _remote_dist() {
   local exclude_ip="$1"
-  shift
-  local -a resource_paths=("$@")
+  local -a resource_paths=("${@:2}")
 
   _remote_get_resource rpm parallel $offline_pkg_path/rpm/parallel -q >/dev/null
 
@@ -557,12 +683,32 @@ function _remote_dist() {
   parallel -j 0 --tag --line-buffer --halt now,fail=1 "$cmd" ::: "${filtered_ips[@]}"
 }
 
-
-#################################################
-## General remote execution function: 
-##  Distribute and execute specified scripts in 
-##  parallel on remote nodes
-#################################################
+#############################################################################
+## Function: _remote_parallel
+## Overview: General remote execution function.
+## Description:
+##   Distribute and execute specified scripts in parallel on remote nodes.
+##
+## Parameters:
+##   - $1: parallel/sequential
+##   - $2: remote_script_path
+##   - $3: exclude_ip
+##   - ${env_vars[@]}: view the corresponding definitions in the function
+##   - --
+##   - ${script_args[@]}: view the corresponding definitions in the function
+##
+## Returns:
+##   - 0: Success (distribute corresponding resources successfully)
+##   - 2: Failure (...)
+##
+## Example:
+##   scp_script_path="xxx"
+##   exclude_ip="xxx"
+##   local -a env_vars=(ip2host INIT_NODE_IP DASHBOARD_TOKEN join_cmds tag)
+##   local -a script_args=("$@")
+##
+##   _remote_parallel parallel "$scp_script_path" "$exclude_ip" "${env_vars[@]}" -- "${script_args[@]}"
+#############################################################################
 function _remote_parallel() {
   local execution_mode="$1"
   local remote_script_path="$2"

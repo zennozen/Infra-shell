@@ -24,7 +24,7 @@ reset="\033[0m"
 ##   and message.
 ##
 ## Parameters:
-##   - $1: (Line type) split or title
+##   - $1: (Line type) split/title
 ##   - $2: char when split type, title message when title type
 ##   - $3: line count num
 ##
