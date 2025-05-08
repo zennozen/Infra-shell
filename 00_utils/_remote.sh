@@ -91,7 +91,8 @@ fi
 
 #############################################
 ## General SSH passwordless function: 
-##   Plan for passwordless authentication and hosts setup on multiple nodes
+##   Plan for passwordless authentication 
+##   and hosts setup on multiple nodes
 #############################################
 function _d_remote_ssh_passfree_config() {
   _print_line title "Plan $tag nodes ip and hostname, configure ssh passwordfree"
@@ -321,10 +322,11 @@ function _remote_ssh_passfree() {
 }
 
 
-#############################################
+################################################
 ## General remote metadata acquisition function: 
-##   Get IP addresses and hostnames of passwordless hosts
-#############################################
+##   Get IP addresses and hostnames of 
+##   passwordless hosts
+################################################
 function _remote_get_ip2host() {
   if [[ ${#ip2host[@]} -eq 0 ]]; then
     # get ip and host from /etc/hosts and save to ip2host
@@ -339,10 +341,11 @@ function _remote_get_ip2host() {
 }
 
 
-#############################################
+################################################
 ## General remote resource acquisition function: 
-##   Supports offline and online acquisition of RPM, download, and image resources
-#############################################
+##   Supports offline and online acquisition of 
+##   RPM, download, and image resources
+################################################
 function _remote_get_resource() {
   local res_type="$1"  # rpm/download/image
   local res_name="$2"
@@ -511,10 +514,11 @@ EOF
     esac
 }
 
-###############################################
+#################################################
 ## General remote resource distribution function: 
-##   Distribute specified resources to remote target nodes
-###############################################
+##   Distribute specified resources to remote 
+##   target nodes
+#################################################
 function _remote_dist() {
   local exclude_ip="$1"
   shift
@@ -554,10 +558,11 @@ function _remote_dist() {
 }
 
 
-##################################################
+#################################################
 ## General remote execution function: 
-##  Distribute and execute specified scripts in parallel on remote nodes
-##################################################
+##  Distribute and execute specified scripts in 
+##  parallel on remote nodes
+#################################################
 function _remote_parallel() {
   local execution_mode="$1"
   local remote_script_path="$2"

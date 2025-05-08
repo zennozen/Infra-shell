@@ -9,17 +9,20 @@ workdir="$(dirname "$abs_script_path")"
 source "$script_path/../00_utils/_print.sh"
 source "$script_path/../00_utils/_logger.sh"
 
+# define global variables
 AUDIT_CONF="/etc/audit/auditd.conf"
 AUDIT_RULES_DIR="/etc/audit/rules.d"
 
 _print_line title "Install and update auditd service"
 
+# install auditd service
 _logger info "Check and install auditd"
 [[ -n "$(ls -A /etc/audit)" ]] || dnf install -y audit
 _print_line split -
 ls -ld /etc/audit/*
 _print_line split -
 
+# backup and update config
 _logger info "Backup and update auditd config"
 [[ -f $AUDIT_CONF ]] && cp -v $AUDIT_CONF ${AUDIT_CONF}_$(date +'%Y%m%d-%H%M').bak
 sed -i -e "/flush/s/INCREMENTAL_ASYNC/INCREMENTAL/g" \
@@ -28,11 +31,13 @@ sed -i -e "/flush/s/INCREMENTAL_ASYNC/INCREMENTAL/g" \
   -e "/verify_email/s/yes/no/g" \
   -e "/tcp_client_max_idle/s/0/60/g" $AUDIT_CONF && cat $_
 
+# start service
 _logger info "Start/Restart auditd service"
 # The auditd service starts via dependencies, not directly with systemctl;
 # use the 'service' command instead.
 service auditd restart && systemctl enable auditd && systemctl status --no-pager $_
 
+# update audit rules
 _logger info "Write and reload the audit rules"
 rm -rf ${AUDIT_RULES_DIR}/audit.rules
 tee ${AUDIT_RULES_DIR}/00-base-config.rules <<EOF
@@ -105,7 +110,8 @@ EOF
 auditctl -D
 augenrules --load
 
-_logger info "Verfiying rules loaded corrently"
+# show audit rules
+_logger info "Show rules loaded corrently"
 auditctl -l
 
 _print_line split -

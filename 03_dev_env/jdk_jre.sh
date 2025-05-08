@@ -17,6 +17,11 @@ trap '_trap_print_env \
   RELEASE TYPE JAVA_HOME URL
 ' ERR
 
+###############################################
+## Java JDK/JRE installation function: 
+##   Supports installing openjdk/jre or 
+##   openjdk-bishengjdk/jre based on parameters
+###############################################
 function install() {
   RELEASE="$(echo $1 | cut -d'-' -f1)"
   TYPE="$(echo $1 | cut -d'-' -f2)"
@@ -28,7 +33,7 @@ function install() {
 
   _print_line title "Install Java $TYPE environment"
 
-  # define var
+  # determine type and version based on parameters, and generate download URL
   case $RELEASE in
     openjdk)
       SOURCE_PREFIX="https://mirrors.tuna.tsinghua.edu.cn/Adoptium/$VER/$TYPE/x64/linux"
@@ -89,6 +94,7 @@ function install() {
   esac
   PKG=$(basename $URL)
 
+  # extract
   cd /usr/local/src
   if [[ -f $PKG ]]; then
     _logger warn "$PKG is already exists in /usr/local/src/, will extract and use ..."
@@ -99,6 +105,7 @@ function install() {
   mv $PKG_ROOT_NAME $JAVA_HOME
   cd -
 
+  # set env var
   echo "export JAVA_HOME=$JAVA_HOME" >> /etc/profile
   echo "export PATH=\$PATH:\$JAVA_HOME/bin" >> /etc/profile
   # source /etc/profile   # Avoid potential issues from erroneous environment variables
@@ -106,6 +113,7 @@ function install() {
   export PATH=$PATH:$JAVA_HOME/bin
   echo -e "PATH: $PATH"
 
+  # summary
   _print_line split -
   _logger info "Java $TYPE environment has been successfully installed. Summary:"
   echo -e "${green}Command to show version: ${blue}java -version${reset}"
@@ -117,15 +125,23 @@ function install() {
   fi
 }
 
+
+#####################################################
+## Java JDK/JRE removal function: 
+##   Identify installation location from environment
+##   variables and remove the software
+#####################################################
 function remove() {
   # check args
   which java || { _logger error "Java is not installed on the system." && exit 1; }\
 
   _print_line title "Remove Java $TYPE environment"
 
+  # delete file
   _logger info "1. Delete related files ..."
   rm -rfv $(sed -n 's/export JAVA_HOME=//p' /etc/profile)
 
+  # remove env var
   _logger info "2. Remove the corresponding environment variable"
   sed -i "/JAVA_HOME/d" /etc/profile
 

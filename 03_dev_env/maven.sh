@@ -16,17 +16,23 @@ trap '_trap_print_env \
   latest_version VERSION MVN_HOME URL
 ' ERR
 
+####################################################
+## Maven install function: 
+##   Install specified or latest Maven version
+####################################################
 function install() {
   _print_line title "Install maven environment"
 
   ! which mvn || { _logger info "Maven environment already installed on the system." && exit 1; }
 
+  # define var
   latest_version=$(curl -s "https://maven.apache.org/download.cgi" | grep -oP 'Apache Maven \K\d+\.\d+\.\d+' | head -1)
   VERSION=${1:-$latest_version}
   MVN_HOME="/usr/local/apache-maven-$VERSION"
   URL="https://dlcdn.apache.org/maven/maven-$(echo $VERSION | cut -d'.' -f1)"/$VERSION/binaries/apache-maven-$VERSION-bin.tar.gz
   PKG=$(basename $URL)
 
+  # extract
   cd /usr/local/src
   if [[ -f $PKG ]]; then
     _logger warn "$PKG is already exists in /usr/local/src/, will extract and use ..."
@@ -36,6 +42,7 @@ function install() {
   tar -zxf $PKG -C /usr/local/
   cd -
 
+  # set env var
   echo "export MVN_HOME=$MVN_HOME" >> /etc/profile
   echo "export PATH=\$PATH:\$MVN_HOME/bin" >> /etc/profile
   # source /etc/profile   # Avoid potential issues from erroneous environment variables
@@ -43,6 +50,7 @@ function install() {
   export PATH=$PATH:$MVN_HOME/bin
   echo -e "PATH: $PATH"
 
+  # summary info
   _print_line split -
   _logger info "Maven environment has been successfully installed. Summary:"
   echo -e "${green}Command to show version: ${blue}mvn -v${reset}"
@@ -54,15 +62,22 @@ function install() {
   fi
 }
 
+####################################################
+## Maven removal function: 
+##   Identify installation location from environment
+##   variables and remove the software
+####################################################
 function remove() {
   # check args
   which mvn || { _logger error "Maven is not installed on the system." && exit 1; }\
 
   _print_line title "Remove Maven environment"
 
+  # delete file
   _logger info "1. Delete related files ..."
   rm -rfv $(sed -n 's/export MVN_HOME=//p' /etc/profile)
 
+  # remove env var
   _logger info "2. Remove the corresponding environment variable"
   sed -i "/MVN_HOME/d" /etc/profile
 

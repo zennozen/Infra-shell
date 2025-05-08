@@ -20,10 +20,13 @@ trap '_trap_print_env \
 # define golabal variables
 SRV_IP="$(ip -4 addr show | grep inet | grep -v 127.0.0.1 | awk 'NR==1 {print $2}' | cut -d'/' -f1)"
 
-#######################################
-## Main Business Logic Begins
-#######################################
+####################################### Main Business Logic Begins ####################################
 
+#########################################
+## Nginx install function: 
+##  Compile and install from source, 
+##  with parameters for installation directory and listening port
+#########################################
 function install() {
   local NGX_VER="$1"
   local NGX_PKG_PREFIX="nginx-$NGX_VER"
@@ -36,7 +39,7 @@ function install() {
     --prefix=$NGX_HOME \
     --with-http_stub_status_module \
     --with-http_ssl_module \
-    --with-http_v2_module \
+    --with-http_v2_module
   "
 
   # check args
@@ -51,9 +54,11 @@ function install() {
 
   _print_line title "Install nginx service"
 
+  # install dep rpms
   _logger info "1. Install necessary dependencies"
   dnf install -y tar wget gcc make pcre-devel zlib-devel openssl-devel
 
+ # download source code
   _logger info "2. Download and extract the nginx source code"
   if [[ -f /usr/local/src/$NGX_PKG_PREFIX.tar.gz ]]; then
     _logger warn "$NGX_PKG_PREFIX.tar.gz is already exists in /usr/local/src/, will extract and use ..."
@@ -63,6 +68,7 @@ function install() {
   cd /usr/local/src/
   tar -zxf $NGX_PKG_PREFIX.tar.gz
 
+  # configure, make, make install from source code
   _logger info "3. Configure, make, make install"
   cd $NGX_PKG_PREFIX
   ./configure $NGX_COMPILE_OPTS
@@ -73,18 +79,21 @@ function install() {
   _logger info "nginx make install completed."
   cd .. && rm -rf $NGX_PKG_PREFIX
 
-  _logger info "4. Update the nginx config"
+  # backup and update config
+  _logger info "4. Backup and update the nginx config"
   cp -v $NGX_CONF ${NGX_CONF}_$(date +'%Y%m%d-%H%M').bak
   sed -i "/listen /s/80/$NGX_LISTEN_PORT/g" $NGX_CONF && grep "listen" $_
   echo
 
+  # start service
   _logger info "5. Starting the nginx service"
   useradd -r nginx
   chown -R nginx:nginx $NGX_HOME
-  # Use absolute path to start NGINX due to config file issues with PATH environment variable
+  # use absolute path to start NGINX due to config file issues with PATH environment variable
   $NGX_HOME/sbin/nginx
   ps -ef | grep "[n]ginx" || _logger error "Nginx start failed. Please manual start."
 
+  # open firewall ports
   _logger info "6. Open the corresponding firewall ports"
   if systemctl status firewalld >/dev/null; then
     firewall-cmd --add-port=$NGX_LISTEN_PORT/tcp --permanent &>/dev/null
@@ -94,9 +103,11 @@ function install() {
     _logger warn "System firewalld is currently disabled."
   fi
 
+  # verify access
   _logger info "7. Verifying nginx service via access url ..."
   curl -sv $NGX_ACCESS_URL
 
+  # summary installation info
   _print_line split -
   _logger info "nginx service has been successfully installed. Summary:"
   echo -e "${green}nginx home: $NGX_HOME;\nnginx config: $NGX_CONF"
@@ -109,7 +120,11 @@ function install() {
   echo -e "${green}nginx access url: $NGX_ACCESS_URL${reset}\n"
 }
 
-
+#########################################
+## Nginx add virtual host function: 
+##   Add virtual hosts via non-intrusive import, 
+##   with listening port and web domain as parameters
+#########################################
 function add_vhost() {
   local NGX_HOME="/usr/local/nginx"
   local NGX_CONF="$NGX_HOME/conf/nginx.conf"
@@ -121,9 +136,11 @@ function add_vhost() {
 
   _print_line title "Pluggable addition of virtual host configuration for Nginx"
 
+  # backup current config
   _logger info "1. Backup current config"
   cp -v $NGX_CONF ${NGX_CONF}_$(date +'%Y%m%d-%H%M').bak
 
+  # create 'sites-available' and 'sites-enabled' dirs for flexible distinction and easy rollback
   _logger info "2. Update config according to user requirements"
   mkdir -p $NGX_HOME/sites-available $NGX_HOME/sites-enabled
   local include_line="        include $NGX_HOME/sites-enabled/*;"
@@ -135,6 +152,7 @@ function add_vhost() {
     _logger warn "Include line already exists in Nginx config, no changes made."
   fi
 
+  # support multi-domain parameter input and loop processing
   for domain in $WEB_DOMAINS; do
     _logger info "Start processes vhost $domain"
     _print_line split -
@@ -152,11 +170,13 @@ server {
         }
 }
 EOF
+    # use symbolic links to flexibly enable and rollback sites
     ln -sf $NGX_HOME/sites-available/$domain $NGX_HOME/sites-enabled/
     _logger info "Test and reload config"
     $NGX_HOME/sbin/nginx -t
     $NGX_HOME/sbin/nginx -s reload && sleep 3
 
+    # verify access
     _logger info "Verifying access: $domain"
     echo "$SRV_IP $domain" >> /etc/hosts
     curl --silent --head --max-time 3 http://$domain:$NGX_LISTEN_PORT/
@@ -167,7 +187,11 @@ EOF
   done
 }
 
-
+#########################################
+## Nginx remove virtual host function: 
+##   Remove virtual hosts via non-intrusive import, 
+##   with listening port and web domain as parameters
+#########################################
 function remove_vhost() {
   local NGX_HOME="/usr/local/nginx"
   local NGX_LISTEN_PORT="$(ss -tunlp | grep nginx | awk '{print $5}' | cut -d':' -f2)"
@@ -178,6 +202,7 @@ function remove_vhost() {
 
   _print_line title "Pluggable removal of virtual host configuration for Nginx"
 
+  # support multi-domain parameter input and loop processing
   for domain in $WEB_DOMAINS; do
     _logger info "Start processes vhost $domain"
     _print_line split -
@@ -186,16 +211,22 @@ function remove_vhost() {
     $NGX_HOME/sbin/nginx -t
     $NGX_HOME/sbin/nginx -s reload && sleep 3
 
+    # print resource path
     _logger info "$domain vhost remove success! But some resource are still preserved:"
     echo -e "${gray}    access address: http://$domain:$NGX_LISTEN_PORT/"
     echo -e "${yellow}    config path: $NGX_HOME/sites-enabled/$domain"
     echo -e "${yellow}    website resource path: $WEB_ROOT_PATH/$domain${reset}"
 
+    # remove domain resolution records from hosts
     sed -i "/$SRV_IP $domain/d" /etc/hosts
   done
 }
 
-
+######################################
+## Nginx upgrade function: 
+##   compile from source, replace binaries, 
+##   and hot-swap processes
+######################################
 function upgrade() {
   local NGX_VER="$1"
   local NGX_PKG_PREFIX="nginx-$NGX_VER"
@@ -208,16 +239,18 @@ function upgrade() {
     --prefix=$NGX_HOME \
     --with-http_stub_status_module \
     --with-http_ssl_module \
-    --with-http_v2_module \
+    --with-http_v2_module
   "
 
   [[ -z "$(ls -A $NGX_HOME 2>/dev/null)" ]] && { _logger error "Nginx is not installed." && exit 1; }
 
   _print_line title "Upgrade nginx version"
 
+  # chk and install dep rpms
   _logger info "1. Install necessary dependencies"
   dnf install -y tar wget gcc make pcre-devel zlib-devel openssl-devel
 
+  # download source code of new version
   _logger info "2. Download and extract the nginx source code"
     if [[ -f /usr/local/src/$NGX_PKG_PREFIX.tar.gz ]]; then
     _logger warn "$NGX_PKG_PREFIX.tar.gz is already exists in /usr/local/src/, will use."
@@ -228,33 +261,40 @@ function upgrade() {
   _logger info "Decompressing ..."
   tar -zxf $NGX_PKG_PREFIX.tar.gz
 
+  # configure, make
   _logger info "3. Configure, make, make install"
   cd $NGX_PKG_PREFIX
   ./configure $NGX_COMPILE_OPTS
   local make_threads=$(( (t=($((nproc))*3/2+1)/2*2, t>0 ? t : 1) ))
   time make -j${make_threads} | tee -a make.log
   _logger info "nginx make completed."
-  time make install -j${make_threads}  | tee -a make_install.log
-  _logger info "nginx make install completed."
 
+  # backup and overwrite binary
   _logger info "4. Backup and overwrite the old binary"
   mv $NGX_HOME/sbin/nginx $NGX_HOME/sbin/nginx_$NGX_OLD_VER
   cp -v objs/nginx $NGX_HOME/sbin/
   cd .. && rm -rf $NGX_PKG_PREFIX
 
+  # hot-swap processes
   _logger info "5. Performing smooth upgrade of Nginx ..."
   $NGX_HOME/sbin/nginx -t
   kill -USR2 $(pgrep -f "nginx: master")
   if (( $(ps -ef | grep "[n]ginx: master" | wc -l) == 2 )); then
     kill -WINCH $(cat /usr/local/nginx/logs/nginx.pid.oldbin)
   else
-    _print_line_msg "RED" "nginx upgrade failure."
+    _logger error "nginx upgrade failure, start rolling back to the old version ..."
+    mv $NGX_HOME/sbin/nginx $NGX_HOME/sbin/nginx_$NGX_VER
+    mv $NGX_HOME/sbin/nginx_$NGX_OLD_VER $NGX_HOME/sbin/nginx
+    $NGX_HOME/sbin/nginx -t
+    $NGX_HOME/sbin/nginx -V
     exit 1
   fi
 
+  # verify access
   _logger info "6. Verifying nginx service via access url ..."
   curl -sv $NGX_ACCESS_URL
 
+  # summary info
   _print_line split -
   _logger info "nginx service has been successfully upgraded. Summary:"
   echo -e "${green}nginx home: $NGX_HOME;\nnginx config: $NGX_CONF"
@@ -267,6 +307,12 @@ function upgrade() {
   echo -e "${green}nginx access url: $NGX_ACCESS_URL${reset}\n"
 }
 
+############################################
+## Nginx removal function:
+##   supporting manual specification of 
+##   installation directory or defaulting to 
+##   '/usr/local/nginx'
+############################################
 function remove() {
   local NGX_HOME="${1:-/usr/local/nginx}"
   local NGX_LISTEN_PORT="$(ss -tunlp | grep nginx | awk '{print $5}' | cut -d':' -f2)"
@@ -275,6 +321,7 @@ function remove() {
 
   _print_line title "Remove nginx service"
 
+  # kill processes
   _logger info "1. Kill nginx processes ..."
   ! ps -ef | grep "[n]ginx" | grep -v "pts" || { pkill -QUIT nginx && sleep 3; }
   while ps -ef | grep "[n]ginx" | grep -v "pts" &>/dev/null; do
@@ -282,12 +329,15 @@ function remove() {
     sleep 5
   done
 
+  # delete file
   _logger info "2. Delete related files ..."
   rm -rfv $NGX_HOME
 
+  # delete user
   _logger info "3. Delete nginx user"
   id nginx && userdel -f nginx
 
+  # close firewall ports
   _logger info "4. Close the corresponding firewall ports"
   if systemctl status firewalld >/dev/null; then
     firewall-cmd --remove-port=$NGX_LISTEN_PORT/tcp --permanent &>/dev/null
@@ -297,6 +347,7 @@ function remove() {
     _logger warn "System firewalld is currently disabled."
   fi
 
+  # remove env var
   _logger info "5. Remove the corresponding environment variable"
   sed -i "/NGX_HOME/d" /etc/profile
 

@@ -4,6 +4,7 @@ set -o errexit
 script_path="$(dirname ${BASH_SOURCE[0]})"
 abs_script_path="$(realpath "${BASH_SOURCE[0]}")"
 workdir="$(dirname "$abs_script_path")"
+
 # import some define
 source "$script_path/../00_utils/_print.sh"
 source "$script_path/../00_utils/_logger.sh"
@@ -14,6 +15,7 @@ trap '_trap_print_env \
   ID
 ' ERR
 
+# define corresponding repo handling functions for systems with different package managers
 function _rocky_linux_repo() {
   tee /etc/yum.repos.d/rockyLinux-alicloud.repo <<-EOF
 [baseos]
@@ -157,7 +159,7 @@ EOF
 }
 
 
-
+# execute the corresponding function based on the identified system release version
 function main() {
   [[ -f /etc/os-release ]] || { _logger error "Cannot determine OS type." && exit 1; }
   . /etc/os-release
