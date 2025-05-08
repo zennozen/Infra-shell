@@ -9,7 +9,7 @@ LATEST_VER="$(curl -s "https://api.github.com/repos/zennozen/Infra-shell/release
 RELEASE_URL="$GITHUB_PROXY/https://github.com/zennozen/Infra-shell/archive/refs/tags/v$LATEST_VER.tar.gz"
 
 curl -C - -L -o Infra-shell_v$LATEST_VER.tar.gz "$RELEASE_URL"
-tar -zxf Infra-shell_v$LATEST_VER.tar.gz
+tar -zxf Infra-shell_v$LATEST_VER.tar.gz && rm -rf $_
 
 echo -e "\033[1;32m
 Usage: 
