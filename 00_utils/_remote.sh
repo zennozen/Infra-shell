@@ -80,20 +80,20 @@
 # define golabal variables
 SRV_IP="$(ip -4 addr show | grep inet | grep -v 127.0.0.1 | awk 'NR==1 {print $2}' | cut -d'/' -f1)"
 
-#############################################
+###################################################################
 #### Remote passwordless setup
-#############################################
+###################################################################
 
 # Enable the DNF RPM package cache to achieve offline installation of related packages
 if ! grep -q '^keepcache=1' /etc/dnf/dnf.conf; then
   echo "keepcache=1" | tee >> /etc/dnf/dnf.conf
 fi
 
-#############################################
+###################################################################
 ## General SSH passwordless function: 
-##   Plan for passwordless authentication 
-##   and hosts setup on multiple nodes
-#############################################
+##   Plan for passwordless authentication and hosts setup on 
+##   multiple nodes
+###################################################################
 function _d_remote_ssh_passfree_config() {
   _print_line title "Plan $tag nodes ip and hostname, configure ssh passwordfree"
 
@@ -278,9 +278,9 @@ EOF
   _logger info "SSH passwordless login configuration succeeded!\n"
 }
 
-############################################
+###################################################################
 ## General passwordless fallback function
-############################################
+###################################################################
 function d_remote_ssh_passfree_undo() {
   # clear ssh passfree
   sed -i "/$tag/d" ${auth_key_file} ${known_hosts_file}
@@ -291,9 +291,9 @@ function d_remote_ssh_passfree_undo() {
   _logger info "SSH passwordless login has been successfully undone!\n"
 }
 
-###########################################
+#####################################################################
 ## General SSH passwordless function
-###########################################
+###################################################################
 function _remote_ssh_passfree() {
   local tag=$2
   local -A ip2host

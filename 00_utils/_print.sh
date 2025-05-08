@@ -1,18 +1,11 @@
 #!/usr/bin/env bash
-############################## usage #######################################
+############################## import #######################################
 # script_path="$(dirname ${BASH_SOURCE[0]})"
 # abs_script_path="$(realpath "${BASH_SOURCE[0]}")"
 # workdir="$(dirname "$abs_script_path")"
 #
 # source "$script_path/../00_utils/_print.sh"
-#
-## Single-line printing:
-#    _print_line split -
-#    _print_line title "this is a title message"
-## Multiline Printing:
-#    _print_line split - 3
-#    _print_line title "this is a title message" 2
-############################## usage #######################################
+############################## import #######################################
 
 # Define color codes
 red="\033[1;31m"
@@ -22,9 +15,29 @@ blue="\033[1;36m"
 gray="\033[1;90m"
 reset="\033[0m"
 
-########################################
-## General print line function
-########################################
+#############################################################################
+## Function: _print_line
+## Overview：General print line function. 
+## Description:
+##   This function formats and prints log messages in different colors based 
+##   on the log level, including the line number of code execution, log level, 
+##   and message.
+##
+## Parameters:
+##   - $1: (Line type) split or title
+##   - $2: char when split type, title message when title type
+##   - $3: line count num
+##
+## Returns:
+##   - 0: Success (Line printed successfully)
+##   - 2：Failure (Invalid option ... Usage: ...)
+##
+## Example:
+##   _print_line split -
+##   _print_line split * 2
+##   _print_line title "this is a title message"
+##   _print_line title "this is a title message" 2
+#############################################################################
 function _print_line() {
   local type="$1"
   local count="$3"

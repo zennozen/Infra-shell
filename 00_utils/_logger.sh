@@ -1,20 +1,34 @@
 #!/usr/bin/env bash
-############################## usage #######################################
+############################## import #######################################
 # script_path="$(dirname ${BASH_SOURCE[0]})"
 # abs_script_path="$(realpath "${BASH_SOURCE[0]}")"
 # workdir="$(dirname "$abs_script_path")"
 #
 # source "$script_path/../00_utils/_logger.sh"
-#
-# _logger debug "This is a debug message."
-# _logger info "This is an informational message."
-# _logger warn "This is a warning message."
-# _logger error "This is an error message."
-############################## usage #######################################
+############################## import #######################################
 
-####################################
-## General log printing function
-####################################
+#############################################################################
+## Function: _logger
+## Overview：General log printing function. 
+## Description:
+##   This function formats and prints log messages in different colors based 
+##   on the log level, including the line number of code execution, log level, 
+##   and message.
+##
+## Parameters:
+##   - $1: Log level
+##   - $2: Message content
+##
+## Returns:
+##   - 0: Success (Log message printed successfully)
+##   - 2：Failure (Invalid option ... Usage: ...)
+##
+## Example:
+##   _logger debug "This is a debug message."
+##   _logger info "This is an informational message."
+##   _logger warn "This is a warning message."
+##   _logger error "This is an error message."
+#############################################################################
 function _logger() {
   local time_lineno="${blue}$(date +'%Y-%m-%d %H:%M:%S') [$(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}]${reset}"
 
