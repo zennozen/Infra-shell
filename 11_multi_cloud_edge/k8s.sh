@@ -156,7 +156,7 @@ function plan_nodes() {
       fi
 
       # plan cluster nodes, configure SSH passwordless, update hostnames
-      _remote_ssh_passfree config "$tag"
+      _remote_ssh_passfree config
       ;;
     node)
       if [[ -z $INIT_NODE_IP ]]; then
@@ -171,7 +171,7 @@ function plan_nodes() {
         }
 
         # update plan cluster nodes
-        _remote_ssh_passfree config "$tag"
+        _remote_ssh_passfree config
       fi
       ;;
   esac

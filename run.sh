@@ -13,7 +13,7 @@ tar -zxf Infra-shell_v$LATEST_VER.tar.gz && rm -rf $_
 
 echo -e "\033[1;32m
 Usage: 
-    cd Infra-shell-$LATEST_VER && ls -l
+    cd Infra-shell-$LATEST_VER && ls
     bash build ls
     bash build gr k8s.sh
 
