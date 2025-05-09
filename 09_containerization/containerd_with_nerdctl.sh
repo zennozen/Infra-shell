@@ -84,6 +84,7 @@ EOF
   if [[ -f nerdctl-full-$NERDCTL_VER-linux-amd64.tar.gz ]]; then
     _logger warn "nerdctl-full-$NERDCTL_VER-linux-amd64.tar.gz is already exists in /usr/local/src/, will use."
   else
+    which wget | dnf install -y wget
     wget --tries=5 --timeout=60 -c $NERDCTL_URL
   fi
   tar -xzf nerdctl-full-$NERDCTL_VER-linux-amd64.tar.gz -C /usr/local
