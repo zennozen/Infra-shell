@@ -538,6 +538,7 @@ EOF
 
         # online get download resources to node local $res_parent_path
         if [[ -z $(ls -A $res_parent_path) ]] &>/dev/null; then
+          _remote_get_resource rpm wget $offline_pkg_path/rpm/wget -q
           _logger warn "No $res_name detected on any nodes, try to download with wget ..."
           for url in ${res_url_list[@]}; do
             if ! wget --progress=bar -c "$url" -P $res_parent_path; then
