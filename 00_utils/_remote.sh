@@ -54,21 +54,25 @@ function _d_remote_ssh_passfree_config() {
   _print_line title "Plan $tag nodes ip and hostname, configure ssh passwordfree"
 
   # Get ips and hostnames list
-  _logger info "1. Get the list of IP addresses and hostnames from $HOME/.hosts file or user input."
-  echo -e "${green} $HOME/.hosts context example:${reset}"
+  _logger info "1. Get the list of IP addresses and hostnames from \$HOME/.hosts file or user input."
+  local ipSegment=$(echo $SRV_IP | cut -d'.' -f-3)
+  echo -e "${green} \$HOME/.hosts context example:${reset}"
   echo "
-192.168.85.111 master1
-192.168.85.112 master2
-192.168.85.113 master3
-192.168.85.121 node1
-192.168.85.122 node2
-192.168.85.123 node3
+$ipSegment.111 k8s-master1
+$ipSegment.112 k8s-master2
+$ipSegment.113 k8s-master3
+$ipSegment.121 k8s-node1
+$ipSegment.122 k8s-node2
+$ipSegment.123 k8s-node3
 one-way=\"master\"
 sync-hostname=true
   "
   # from $HOME/.hosts
   if [[ -f $HOME/.hosts ]]; then
     _logger info "found $HOME/.hosts file, reading from it"
+    echo -e "${green} Current \$HOME/.hosts context:${reset}"
+    cat $HOME/.hosts
+
     one_way_host_str=""
     sync_hostname=true
 
