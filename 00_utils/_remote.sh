@@ -66,6 +66,7 @@ $ipSegment.122 k8s-node2
 $ipSegment.123 k8s-node3
 one-way=\"master\"
 sync-hostname=true
+srv_passwd=\"AAAaaa12#$\"
   "
   # from $HOME/.hosts
   if [[ -f $HOME/.hosts ]]; then
@@ -168,9 +169,11 @@ sync-hostname=true
 
   # Get servers password
   while true; do
-    printf "Ensure all servers have ${red}the same password ${reset}and enter it: "
-    read -rsp "" srv_passwd
-    echo
+    if [[ -z $srv_passwd ]]; then
+      printf "Ensure all servers have ${red}the same password ${reset}and enter it: "
+      read -rsp "" srv_passwd
+      echo
+    fi
 
     conn_status=1
     for ip in "${!ip2host[@]}"; do

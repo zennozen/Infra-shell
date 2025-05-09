@@ -18,7 +18,7 @@ trap '_trap_print_env \
 # define golabal variables
 dep_script="containerd_with_nerdctl.sh"
 containerd_acceleration_dir="/etc/containerd/certs.d"
-nerdctl_ver="2.0.4"
+nerdctl_ver="2.0.5"
 docker_mirrors=(
   "https://docker.m.daocloud.io"
   "https://register.librax.org"
@@ -29,8 +29,9 @@ docker_mirrors=(
   "https://docker.actima.top"
   "https://docker.xiaogenban1993.com"
   "https://func.ink"
-  "hub.amingg.com"
-  "docker.amingg.com"
+  "https://docker.1panel.live"
+  "https://hub.amingg.com"
+  "https://docker.amingg.com"
 )
 test_docker_imgs=(
   "docker.io/calico/apiserver:v3.29.3"
