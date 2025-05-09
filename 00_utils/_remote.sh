@@ -47,6 +47,7 @@ fi
 ##     192.168.85.123 node3
 ##     one-way="master"
 ##     sync-hostname=true
+##     srv_passwd="AAAaaa12#$"
 ##   2.
 ##     _d_remote_ssh_passfree_config
 #############################################################################

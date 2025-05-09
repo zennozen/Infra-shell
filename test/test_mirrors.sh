@@ -28,10 +28,6 @@ docker_mirrors=(
   "https://lispy.org"
   "https://docker.actima.top"
   "https://docker.xiaogenban1993.com"
-  "https://func.ink"
-  "https://docker.1panel.live"
-  "https://hub.amingg.com"
-  "https://docker.amingg.com"
 )
 test_docker_imgs=(
   "docker.io/calico/apiserver:v3.29.3"
