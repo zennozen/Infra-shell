@@ -371,8 +371,8 @@ EOF
   _logger info "4.3 Install kubeadm-$K8S_VER (include kubectl and kubelet)"
   _remote_get_resource rpm kubeadm-$K8S_VER $offline_pkg_path/rpm/kubeadm-$K8S_VER -q
   # adapt the kubeadm package to be independent of the kubectl and kubelet packages
-  rpm -q "kubectl" || _remote_get_resource rpm kubectl-$K8S_VER $offline_pkg_path/rpm/kubeadm-$K8S_VER -q
-  rpm -q "kubelet" || _remote_get_resource rpm kubelet-$K8S_VER $offline_pkg_path/rpm/kubeadm-$K8S_VER -q
+  rpm -q "kubectl" || _remote_get_resource rpm kubectl-$K8S_VER $offline_pkg_path/rpm/kubectl-$K8S_VER -q
+  rpm -q "kubelet" || _remote_get_resource rpm kubelet-$K8S_VER $offline_pkg_path/rpm/kubelet-$K8S_VER -q
 
   _logger info "4.4 Set kubelet to start on boot, initiated by kubeadm init"
   systemctl enable kubelet --now && systemctl status --no-pager kubelet

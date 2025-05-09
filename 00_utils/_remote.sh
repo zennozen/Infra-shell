@@ -71,7 +71,9 @@ sync-hostname=true
   if [[ -f $HOME/.hosts ]]; then
     _logger info "found $HOME/.hosts file, reading from it"
     echo -e "${green} Current \$HOME/.hosts context:${reset}"
+    echo
     cat $HOME/.hosts
+    echo
 
     one_way_host_str=""
     sync_hostname=true
