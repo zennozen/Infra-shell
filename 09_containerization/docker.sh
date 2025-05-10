@@ -161,8 +161,7 @@ function update_config_and_start() {
         "https://docker.hlmirror.com",
         "https://lispy.org",
         "https://docker.actima.top",
-        "https://docker.xiaogenban1993.com",
-        "https://func.ink"
+        "https://docker.xiaogenban1993.com"
     ],
     "insecure-registries": [
         "docker.rockylinux.cn"

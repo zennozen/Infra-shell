@@ -124,9 +124,6 @@ server = "https://docker.io"
 
 [host."https://docker.xiaogenban1993.com"]
   capabilities = ["pull", "resolve"]
-
-[host."https://func.ink"]
-  capabilities = ["pull", "resolve"]
 EOF
 
   # registry.k8s.io image acceleration
