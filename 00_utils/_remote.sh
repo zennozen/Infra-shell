@@ -55,9 +55,9 @@ function _d_remote_ssh_passfree_config() {
   _print_line title "Plan $tag nodes ip and hostname, configure ssh passwordfree"
 
   # Get ips and hostnames list
-  _logger info "1. Get the list of IP addresses and hostnames from \$HOME/.hosts file or user input."
+  _logger info "1. Get the list of IP addresses and hostnames from ~/.hosts file or user input."
   local ipSegment=$(echo $SRV_IP | cut -d'.' -f-3)
-  echo -e "${green} \$HOME/.hosts context example:${reset}"
+  echo -e "${green} ~/.hosts context example:${reset}"
   echo "
 $ipSegment.111 k8s-master1
 $ipSegment.112 k8s-master2
@@ -67,7 +67,7 @@ $ipSegment.122 k8s-node2
 $ipSegment.123 k8s-node3
 one-way=\"master\"
 sync-hostname=true
-srv_passwd=\"AAAaaa12#$\"
+srv-passwd=\"AAAaaa12#$\"
   "
   # from $HOME/.hosts
   if [[ -f $HOME/.hosts ]]; then
@@ -91,6 +91,11 @@ srv_passwd=\"AAAaaa12#$\"
 
       if [[ "$line" =~ ^sync-hostname= ]]; then
         sync_hostname=$(echo "$line" | cut -d'=' -f2 | tr -d '"')
+        continue
+      fi
+
+      if [[ "$line" =~ ^srv-passwd= ]]; then
+        srv_passwd=$(echo "$line" | cut -d'=' -f2 | tr -d '"')
         continue
       fi
 
@@ -157,6 +162,7 @@ srv_passwd=\"AAAaaa12#$\"
         break
       else
         echo -e "${yellow}No match found for host pattern: $one_way_host_str ${reset}"
+        break
       fi
     else
       matched_one_way_ips=("${!ip2host[@]}")

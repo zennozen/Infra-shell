@@ -990,6 +990,7 @@ function install_k9s_cli() {
   local latest_ver="$(curl -s https://api.github.com/repos/derailed/k9s/releases/latest | grep tag_name | cut -d '"' -f 4)"
   local k9s_ver=${latest_ver:-"v0.50.4"}
   local k9s_url="https://files.m.daocloud.io/github.com/derailed/k9s/releases/download/$k9s_ver/k9s_Linux_amd64.tar.gz"
+  
   _remote_get_resource download k9s $offline_pkg_path/download/k9s $k9s_url
   tar -zxvf $offline_pkg_path/download/k9s/k9s_Linux_amd64.tar.gz -C /usr/bin --wildcards --no-anchored 'k9s'
   chmod +x /usr/bin/k9s
