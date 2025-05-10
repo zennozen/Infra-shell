@@ -800,11 +800,11 @@ function install_calico() {
 #############################################################################
 function remote_dist() {
   # define resources
+
   local -a resource_paths=(
     "/root/$dep_script"
-    "$offline_pkg_path/rpm/lrzsz"
-    "$offline_pkg_path/rpm/sshpass"
-    "$offline_pkg_path/rpm/parallel"
+    "$offline_pkg_path/rpm"
+    "$offline_pkg_path/download"
   )
   local exclude_ip="$INIT_NODE_IP" # Define remote machines to exclude from the loop
 
