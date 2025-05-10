@@ -147,7 +147,7 @@ srv-passwd=\"AAAaaa12#$\"
 
       for ip in "${!ip2host[@]}"; do
         hostname=${ip2host[$ip]}
-        if [[ $hostname =~ ^$one_way_host_str ]]; then
+        if [[ $hostname =~ $one_way_host_str ]]; then
           matched_one_way_ips+=("$ip")
           found=true
         fi
