@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #####################################
-## Usage: br=<branch_name> && curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/zennozen/Infra-shell/refs/heads/$br/run.sh | bash /dev/stdin $br
+## Usage: bash <(curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/zennozen/Infra-shell/refs/heads/main/run.sh)
 #####################################
 set -e
 

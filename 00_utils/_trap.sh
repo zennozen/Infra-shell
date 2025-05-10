@@ -14,7 +14,7 @@ set -o errtrace
 ## Description:
 ##   Capture errors and print variable values before exiting. This function
 ##   supports printing values of scalar variables, indexed arrays, and
-##   associative arrays using the `declare -p` command.
+##   associative arrays using the 'declare -p' command.
 ##
 ## Parameters:
 ##   - $@: List of variable names to print
