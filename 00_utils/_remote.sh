@@ -76,8 +76,7 @@ srv-passwd=\"AAAaaa12#$\"
     echo
     cat $HOME/.hosts
     echo
-
-    one_way_host_str=""
+    
     sync_hostname=true
 
     while IFS= read -r line; do
