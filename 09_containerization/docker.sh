@@ -45,12 +45,35 @@ function rpm_install() {
   _print_line title "Install Docker via yum repo"
 
   get_docker_ver
+
+  _logger info "1. Update system config"
+  _logger info "1.1 Enable the netfilter module to support routing forwarding"
+  echo "br_netfilter" | tee /etc/modules-load.d/br_netfilter.conf
+  systemctl restart systemd-modules-load
+  lsmod | grep "br_netfilter"
+
+  _logger info "1.2 Enable kernel routing forwarding, bridge filtering, and prefer to avoid using swap space, etc."
+  tee /etc/sysctl.d/container.conf <<-EOF
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
+vm.swappiness = 0
+vm.overcommit_memory = 1
+vm.panic_on_oom = 0
+fs.inotify.max_user_instances = 8192
+fs.inotify.max_user_watches = 1048576
+fs.file-max = 52706963
+fs.nr_open = 52706963
+net.ipv6.conf.all.disable_ipv6 = 1
+net.netfilter.nf_conntrack_max = 2310720
+EOF
+  sysctl -p /etc/sysctl.d/container.conf
   
-  _logger info "1. Add official yum repo"
+  _logger info "2. Add official yum repo"
   dnf config-manager --add-repo=https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
   dnf makecache
 
-  _logger info "2. Install docker-ce"
+  _logger info "3. Install docker-ce"
   # containerd.io docker-ce-cli  docker-buildx-plugin docker-compose-plugin docker-ce-rootless-extras
   dnf install -y docker-ce-$DOCKER_VER
 }
@@ -68,13 +91,21 @@ function tar_install() {
   lsmod | grep "br_netfilter"
 
   _logger info "1.2 Enable kernel routing forwarding, bridge filtering, and prefer to avoid using swap space, etc."
-  sed -i '/^net.ipv4.ip_forward/s/0/1/g' /etc/sysctl.conf
   tee /etc/sysctl.d/container.conf <<-EOF
 net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
 vm.swappiness = 0
+vm.overcommit_memory = 1
+vm.panic_on_oom = 0
+fs.inotify.max_user_instances = 8192
+fs.inotify.max_user_watches = 1048576
+fs.file-max = 52706963
+fs.nr_open = 52706963
+net.ipv6.conf.all.disable_ipv6 = 1
+net.netfilter.nf_conntrack_max = 2310720
 EOF
-  sysctl -p /etc/sysctl.conf /etc/sysctl.d/container.conf
+  sysctl -p /etc/sysctl.d/container.conf
 
   _logger info "2. Download and extract docker binary .tgz package"
   cd /usr/local/src
