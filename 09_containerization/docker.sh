@@ -199,6 +199,9 @@ EOF
   systemctl --no-pager -l status docker
   ps -ef | grep [d]ocker
 
+  _logger info "6. Enable docker command auto-completion"
+  echo "source <(docker completion bash)" >> ~/.bashrc && source <(docker completion bash)
+
   _print_line split -
   _logger info "Docker has been successfully installed.
 Summary:

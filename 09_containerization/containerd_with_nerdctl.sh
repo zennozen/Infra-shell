@@ -239,6 +239,9 @@ EOF
   systemctl enable containerd buildkit --now
   systemctl status --no-pager containerd buildkit
 
+  _logger info "5. Enable nerdctl command auto-completion"
+  echo "source <(nerdctl completion bash)" >> ~/.bashrc && source <(nerdctl completion bash)
+
   _print_line split -
   _logger info "Containerd with Nerdctl has been successfully installed.
 Summary:
