@@ -137,6 +137,7 @@ function install() {
   _logger info "4. Begin environment pre-processing"
   _logger info "4.1 Disable selinux"
   sed -i "/SELINUX=/s/enforcing/disabled/g" /etc/selinux/config | sed "/^#/d; /^$/d"
+  grubby --update-kernel ALL --args selinux=0
   setenforce 0 && sestatus
 
   _logger info "4.2 Configure ntp clock source and immediately synchronize time"

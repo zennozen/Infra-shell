@@ -63,6 +63,7 @@ function install() {
 
   _logger info "2. Disable selinux"
   sed -i '/^SELINUX/s/enforcing/disabled/g' /etc/selinux/config
+  grubby --update-kernel ALL --args selinux=0
   setenforce 0 && sestatus
 
   _logger info "3. Install dependencies"

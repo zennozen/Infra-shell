@@ -233,6 +233,7 @@ EOF
   # disable selinux
   _logger info "2.2 Disable selinux"
   sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
+  grubby --update-kernel ALL --args selinux=0
   setenforce 0  && sestatus
 
   # disable swap
