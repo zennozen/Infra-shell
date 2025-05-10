@@ -769,6 +769,35 @@ function install_calico() {
   kubectl apply -f $calico_config_path/custom-resources.yaml
 }
 
+#############################################################################
+## Function: generate_token
+## Overview: Function to generate cluster token for master and node machines.
+## Description:
+##   Generate passwords in advance for nodes that are about to join the 
+##   cluster during the initialization of the nodes, and pass them as variables
+##   to accommodate one-way passwordless scenarios.
+##
+## Parameters:
+##
+## Returns:
+##   -  0: Success (generate tokens successfully)
+##   - !0: Failure (failed to ...)
+##
+## Example:
+##   declare -A join_cmds
+##   generate_token
+#############################################################################
+function generate_token() {
+  _print_line title " Gererate token for join cluster"
+
+  certificate_key="$(kubeadm init phase upload-certs --upload-certs | tail -n 1 | awk '{print $NF}')"
+  join_cmds[master]="$(kubeadm token create --print-join-command --certificate-key $certificate_key)"
+  join_cmds[node]="$(kubeadm token create --print-join-command)"
+
+  _logger info "The token of master join cluster is: \n${join_cmds[master]}"
+  _logger info "The token of node join cluster is: \n${join_cmds[node]}"
+}
+
 
 #############################################################################
 ## Function: remote_dist
@@ -886,8 +915,10 @@ function remote_parallel() {
 ## Function: join_cluster
 ## Overview: Function to remotely generate cluster tokens and join the cluster.
 ## Description:
-##  Generate cluster tokens from remote node initialization based on node 
-##  roles (master/node), and join the cluster using the tokens.
+##   Read the cluster password from the variable definitions in the script 
+##   passed remotely, or generate the cluster password by executing commands
+##   remotely. Nodes use the corresponding password to join the cluster based 
+##   on their roles(master/node).
 ##
 ## Parameters:
 ##
@@ -896,6 +927,7 @@ function remote_parallel() {
 ##   - !0: Failure (failed to ...)
 ##
 ## Example:
+##   declare -A join_cmds
 ##   join cluster
 #############################################################################
 function join_cluster() {
@@ -903,20 +935,25 @@ function join_cluster() {
 
   # generating token
   local node_role=$(hostname -s | grep -oE 'master|node')
-  _logger info "Generating cluster join command remotely ..."
-  case $node_role in
-    master)
-      certificate_key=$(ssh $USER@$INIT_NODE_IP "kubeadm init phase upload-certs --upload-certs | tail -n 1 | awk '{print $NF}'")
-      join_cmds[master]=$(ssh $USER@$INIT_NODE_IP "kubeadm token create --print-join-command --certificate-key $certificate_key")
-      ;;
-    node)
-      join_cmds[node]=$(ssh $USER@$INIT_NODE_IP "kubeadm token create --print-join-command")
-      ;;
-    *)
-      _logger info "Failed to get role type from hostname, please check the current hostname."
-      exit 1
-      ;;
-  esac
+
+  if [[ ${#join_cmds[@]} -ne 2 ]]; then
+    _logger info "Failed to read token from script variable definitions, generating cluster join command remotely ..."
+    case $node_role in
+      master)
+        certificate_key=$(ssh $USER@$INIT_NODE_IP "kubeadm init phase upload-certs --upload-certs | tail -n 1 | awk '{print $NF}'")
+        join_cmds[master]=$(ssh $USER@$INIT_NODE_IP "kubeadm token create --print-join-command --certificate-key $certificate_key")
+        ;;
+      node)
+        join_cmds[node]=$(ssh $USER@$INIT_NODE_IP "kubeadm token create --print-join-command")
+        ;;
+      *)
+        _logger info "Failed to get role type from hostname, please check the current hostname."
+        exit 1
+        ;;
+    esac
+  else
+    _logger info "Read the password from script variable definitions, attempting to join the cluster."
+  fi
 
   # join cluster
   if [[ -z ${join_cmds[$node_role]} ]]; then
@@ -1500,6 +1537,7 @@ function main() {
       load_and_push_image
       init_cluster
       install_calico
+      generate_token
       time remote_dist
       shift 2
       time remote_parallel deploy node ${@:1}
