@@ -240,6 +240,7 @@ EOF
   systemctl status --no-pager containerd buildkit
 
   _logger info "5. Enable nerdctl command auto-completion"
+  dnf install -y bash-completion
   echo "source <(nerdctl completion bash)" >> ~/.bashrc && source <(nerdctl completion bash)
 
   _print_line split -

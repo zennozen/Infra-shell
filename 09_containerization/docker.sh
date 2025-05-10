@@ -200,6 +200,7 @@ EOF
   ps -ef | grep [d]ocker
 
   _logger info "6. Enable docker command auto-completion"
+  dnf install -y bash-completion
   echo "source <(docker completion bash)" >> ~/.bashrc && source <(docker completion bash)
 
   _print_line split -

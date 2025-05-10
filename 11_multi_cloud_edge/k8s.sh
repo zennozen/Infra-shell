@@ -386,6 +386,7 @@ EOF
   fi
 
   _logger info "4.6 Enable kubectl command auto-completion"
+  _remote_get_resource rpm bash-completion $offline_pkg_path/rpm/bash-completion -q
   echo "source <(kubectl completion bash)" >> ~/.bashrc && source <(kubectl completion bash)
 }
 
