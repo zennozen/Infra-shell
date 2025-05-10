@@ -682,10 +682,10 @@ function init_cluster() {
   "
   INIT_CMD=$(echo "$INIT_CMD" | awk '{$1=$1};1')  # reformat the field to remove extra spaces and tabs
 
-  # printf "\n$INIT_CMD\n\n"
-  # read -rp "Will initialize cluster. Confirm? (y/n) [Enter 'y' by default]: " answer
-  # answer=${answer:-y}
-  # [[ $answer =~ ^[Yy]$ ]] || { _logger error "User canceled initializing the cluster." && exit 1; }
+  printf "\n$INIT_CMD\n\n"
+  read -rp "Will initialize cluster. Confirm? (y/n) [Enter 'y' by default]: " answer
+  answer=${answer:-y}
+  [[ $answer =~ ^[Yy]$ ]] || { _logger error "User canceled initializing the cluster." && exit 1; }
 
   _logger info "7.2 Start init"
   if ! $INIT_CMD; then
@@ -1238,7 +1238,7 @@ function cluster_health_chk() {
   _print_line split blank 3
   _logger info "Show the status of the entire cluster."
   _logger info "The status of the cluster's nodes:"
-  kubectl get node
+  kubectl get node -o wide
   _logger info "The status of the cluster's services:"
   kubectl get svc --all-namespaces -o wide
   _logger info "The status of the cluster's pods:"

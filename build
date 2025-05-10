@@ -70,7 +70,7 @@ function generate_standalone() {
 
       # chk args
       [[ -f $source_script_path ]] || { _logger error "$source_script_path not found!" && exit 1; }
-      [[ -d $target_dir ]] || mkdir -p $target_dir
+      [[ -d $target_dir ]] || mkdir -p $target_dir && cd $_
 
       > $target_script_path
 
@@ -114,7 +114,7 @@ function generate_standalone() {
       done < $source_script_path
 
       _print_line split -
-      _logger info "Generated complete script: ${blue}$target_script_path"
+      _logger info "Generated complete script. \n$(ls -l)"
       ;;
   esac
 }
