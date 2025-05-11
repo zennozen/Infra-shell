@@ -721,12 +721,13 @@ function init_cluster() {
 
 #############################################################################
 ## Function: install_calico
-## Overview: Function to install Calico with official yaml file.
+## Overview: Function to install Calico and Calicoctl.
 ## Description:
-##  Retrieve the official Calico YAML, modify the image addresses to point to
-##  the private registry, set the image pull policy to "IfNotPresent", 
-##  configure the network policy to automatically detect node addresses based
-##  on the specified network interface name, and then deploy the calico components.
+##  Retrieve the official Calico Operator and CRD YAML, modify the image 
+##  addresses to point to the private registry, set the image pull policy to
+##  "IfNotPresent", configure the network policy to automatically detect node
+##  addresses based on the specified network interface name, and then deploy
+##  the calico components. And install calicoctl cli tools to /usr/local/bin.
 ##
 ## Parameters:
 ##
@@ -747,10 +748,12 @@ function install_calico() {
     # tigera-operator.yaml deploys and upgrades Calico, while custom-resources.yaml configures its behavior
     "$GITHUB_PROXY/https://raw.githubusercontent.com/projectcalico/calico/v$CALICO_VER/manifests/tigera-operator.yaml"
     "$GITHUB_PROXY/https://raw.githubusercontent.com/projectcalico/calico/v$CALICO_VER/manifests/custom-resources.yaml"
+    "$GITHUB_PROXY/https://github.com/projectcalico/calico/releases/download/v$CALICO_VER/calicoctl-linux-amd64"
   )
 
   _print_line title "8. Install the Calico network plugin to connect node networks (current machine: $(hostname))"
 
+  _logger info "8.1 download the Calico Operator and CRD YAML files and deployment"
   _remote_get_resource download calico $offline_pkg_path/download/calico ${calico_url[@]}
   mkdir -p $calico_config_path
   cp -v $offline_pkg_path/download/calico/* $calico_config_path
@@ -769,6 +772,13 @@ function install_calico() {
     $calico_config_path/custom-resources.yaml
 
   kubectl apply -f $calico_config_path/custom-resources.yaml
+
+  _logger info "8.2 install calicoctl cli tools"
+  cp $calico_config_path/calicoctl-linux-amd64 /usr/local/bin/calico && chmod +x $_
+  _logger info "The Calicoctl version:"
+  calicoctl version
+  _logger info "The current status of a Calico node:"
+  calicoctl node status
 }
 
 #############################################################################
