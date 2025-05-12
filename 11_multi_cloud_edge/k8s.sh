@@ -1006,7 +1006,7 @@ function install_helm() {
   local helm_url=(
     #"https://get.helm.sh/helm-v${latest_ver}-linux-amd64.tar.gz"
     #"https://get.helm.sh/helm-v${latest_ver}-linux-amd64.tar.gz.sha256"
-    "https://files.m.daocloud.io/get.helm.sh/helm-v${latest_ver}-linux-amd64.tar.gz"
+    "https://files.m.daocloud.io/get.helm.sh/helm-${latest_ver}-linux-amd64.tar.gz"
   )
     
   _remote_get_resource download helm $offline_pkg_path/download/helm ${helm_url[@]}
@@ -1097,14 +1097,15 @@ ${green}2 kuboard ${reset} A powerful open-source Kubernetes management interfac
 
     # update values.yaml
     sed -i \
-      -e 's/^ingress:[[:space:]]*enabled:[[:space:]]*true/ingress:\n  enabled: false/' \
+      #-e 's/^ingress:[[:space:]]*enabled:[[:space:]]*true/ingress:\n  enabled: false/' \
       -e "s|\(repository:[[:space:]]*\)\([^/]*\)/\(.*\)|\1$INIT_NODE_IP:5000/\3|" \
     $dashboard_path/kubernetes-dashboard/values.yaml
 
     sed -i "/repository: kong$/s#kong#$INIT_NODE_IP:5000/kong#g" $dashboard_path/kubernetes-dashboard/charts/kong/values.yaml
 
     # helm install chart pkg
-    helm upgrade --install kubernetes-dashboard $dashboard_path/kubernetes-dashboard --namespace kubernetes-dashboard --create-namespace
+    helm upgrade --install kubernetes-dashboard $dashboard_path/kubernetes-dashboard --create-namespace --namespace kubernetes-dashboard
+
 
     # _print_line split -
     # local dashboard_path="/etc/kubernetes/plugins/dashboard"
