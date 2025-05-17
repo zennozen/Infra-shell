@@ -23,7 +23,7 @@ SRV_IP="$(ip -4 addr show | grep inet | grep -v 127.0.0.1 | awk 'NR==1 {print $2
 INIT_NODE_IP=""
 GITHUB_PROXY="https://ghproxy.net"
 K8S_V="${3:-"1.29"}"
-NERDCTL_VER="1.7.7"  # containerd v1.7.22, default sandbox = pause:3.8 (will update based on Kubernetes version)
+NERDCTL_VER=""
 SVC_SUBNET="10.10.0.0/16"
 POD_SUBNET="10.244.0.0/16"
 INIT_CMD=""
@@ -55,10 +55,35 @@ case $K8S_V in
   1.29)
     K8S_VER="1.29.14"
     ;;
+  1.29)
+    K8S_VER="1.29.14"
+    ;;
+  1.30)
+    K8S_VER="1.30.13"
+    ;;
+  1.31)
+    K8S_VER="1.31.9"
+    ;;
+  1.32)
+    K8S_VER="1.32.5"
+    ;;
+  1.33)
+    K8S_VER="1.33.1"
+    ;;
   *)
     _logger error "Version number is invalid or unstable, not supported temporarily."
     exit 1
 esac
+
+case $K8S_V in
+  1.24|1.25|1.26|1.27|1.28|1.29)
+    NERDCTL_VER="1.7.7"
+    ;;
+  1.30|1.31|1.32)
+    NERDCTL_VER="2.0.5"
+    ;;
+esac
+
 case $K8S_V in
   1.24|1.25|1.26)
     CALICO_VER="3.26.1"
@@ -72,9 +97,13 @@ case $K8S_V in
     CALICO_VER="3.28.4"
     TIGERA_VER="1.34.10"
     ;;
-  1.29)
+  1.29|1.30)
     CALICO_VER="3.29.3"
     TIGERA_VER="1.36.7"
+    ;;
+  1.31|1.32|1.33)
+    CALICO_VER="3.30.0"
+    TIGERA_VER="1.38.0"
     ;;
 esac
 
