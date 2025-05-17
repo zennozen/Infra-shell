@@ -43,10 +43,8 @@ function install() {
     NERDCTL_VER="$(curl -s https://api.github.com/repos/containerd/nerdctl/releases/latest | \
       grep '"tag_name":' | awk -F 'v|"' '{print $5}')"
   fi
-  if [[ -z $NERDCTL_VER ]]; then
-    _logger warn "Failed to get latest version number, default to 2.0.4"
-    NERDCTL_VER="2.0.4"
-  fi
+  [[ -n $NERDCTL_VER ]] || { _logger error "Failed to get containerd version number." && exit 1; }
+
   local NERDCTL_URL="$NERDCTL_URL_PREFIX/v$NERDCTL_VER/nerdctl-full-$NERDCTL_VER-linux-amd64.tar.gz"
 
   _logger info "1. Update system config"
@@ -91,14 +89,45 @@ EOF
   mkdir -p /opt/cni/bin && cp -fv /usr/local/libexec/cni/* $_
   cp -fv /usr/local/lib/systemd/system/*.service /etc/systemd/system/
 
-  _logger info "4. Configure image acceleration"
+  _logger info "4. Enable SystemdCgroup and configure image acceleration"
   mkdir -p /etc/containerd
-  [[ -f $CONTAINERD_CONF ]] && cp -fv $CONTAINERD_CONF $CONTAINERD_CONF.bak
+  [[ -f $CONTAINERD_CONF ]] && cp -fv $CONTAINERD_CONF{,.bak}
   containerd config default > $CONTAINERD_CONF
-  sed -i -e "/\[plugins.'io.containerd.cri.v1.images'.registry\]/,/\[/{s|config_path = ''|config_path = '$CONTAINERD_ACCELERATION_DIR'|}" $CONTAINERD_CONF
 
-  # docker.hub image acceleration
-  mkdir -p $CONTAINERD_ACCELERATION_DIR/docker.io && tee $_/hosts.toml <<-EOF
+  # update cgroup driver
+  sed -i -e '/systemd_cgroup/s/false/true/g' -e '/SystemdCgroup/s/false/true/g' $CONTAINERD_CONF
+
+  # configure image acceleration
+  containerd_v=$(containerd -v | awk -F' |v' '{print $4}' | awk -F'.' '{print $1}')
+  case $containerd_v in
+    1)
+      sed -i '/\[plugins\."io\.containerd\.grpc\.v1\.cri"\.registry\.mirrors\]/a \
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"] \
+          endpoint = ["https://docker.1ms.run", "https://docker-0.unsee.tech", "https://docker.m.daocloud.io", "https://register.librax.org", "https://docker.hlmirror.com"] \
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."registry.k8s.io"] \
+          endpoint = ["https://k8s.m.daocloud.io"] \
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.elastic.co"] \
+          endpoint = ["https://elastic.m.daocloud.io"] \
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gcr.io"] \
+          endpoint = ["https://gcr.m.daocloud.io", "https://gcr.1ms.run"] \
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."ghcr.io"] \
+          endpoint = ["https://ghcr.m.daocloud.io", "https://ghcr.1ms.run"] \
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."mcr.microsoft.com"] \
+          endpoint = ["https://mcr.m.daocloud.io"] \
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."nvcr.io"] \
+          endpoint = ["https://nvcr.m.daocloud.io"] \
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."quay.io"] \
+          endpoint = ["https://quay.m.daocloud.io"] \
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."registry.jujucharms.com"] \
+          endpoint = ["https://jujucharms.m.daocloud.io"] \
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."rocks.canonical.com"] \
+          endpoint = ["https://rocks-canonical.m.daocloud.io"]' $CONTAINERD_CONF
+      ;;
+    2)
+      sed -i -e "/\[plugins.'io.containerd.cri.v1.images'.registry\]/,/\[/{s|config_path = ''|config_path = '$CONTAINERD_ACCELERATION_DIR'|}" $CONTAINERD_CONF
+
+      # docker.hub image acceleration
+      mkdir -p $CONTAINERD_ACCELERATION_DIR/docker.io && tee $_/hosts.toml <<-EOF
 server = "https://docker.io"
 
 [host."https://docker.1ms.run"]
@@ -126,24 +155,24 @@ server = "https://docker.io"
   capabilities = ["pull", "resolve"]
 EOF
 
-  # registry.k8s.io image acceleration
-  mkdir -p $CONTAINERD_ACCELERATION_DIR/registry.k8s.io && tee $_/hosts.toml <<-EOF
+      # registry.k8s.io image acceleration
+      mkdir -p $CONTAINERD_ACCELERATION_DIR/registry.k8s.io && tee $_/hosts.toml <<-EOF
 server = "https://registry.k8s.io"
 
 [host."https://k8s.m.daocloud.io"]
   capabilities = ["pull", "resolve"]
 EOF
 
-  # docker.elastic.co image acceleration
-  mkdir -p $CONTAINERD_ACCELERATION_DIR/docker.elastic.co && tee $_/hosts.toml <<-EOF
+      # docker.elastic.co image acceleration
+      mkdir -p $CONTAINERD_ACCELERATION_DIR/docker.elastic.co && tee $_/hosts.toml <<-EOF
 server = "https://docker.elastic.co"
 
 [host."https://elastic.m.daocloud.io"]
   capabilities = ["pull", "resolve"]
 EOF
 
-  # gcr.io image acceleration
-  mkdir -p $CONTAINERD_ACCELERATION_DIR/gcr.io && tee $_/hosts.toml <<-EOF
+      # gcr.io image acceleration
+      mkdir -p $CONTAINERD_ACCELERATION_DIR/gcr.io && tee $_/hosts.toml <<-EOF
 server = "https://gcr.io"
 
 [host."https://gcr.m.daocloud.io"]
@@ -153,8 +182,8 @@ server = "https://gcr.io"
   capabilities = ["pull", "resolve"]
 EOF
 
-  # ghcr.io image acceleration
-mkdir -p $CONTAINERD_ACCELERATION_DIR/ghcr.io && tee $_/hosts.toml <<-EOF
+      # ghcr.io image acceleration
+    mkdir -p $CONTAINERD_ACCELERATION_DIR/ghcr.io && tee $_/hosts.toml <<-EOF
 server = "https://ghcr.io"
 
 [host."https://ghcr.m.daocloud.io"]
@@ -164,45 +193,47 @@ server = "https://ghcr.io"
   capabilities = ["pull", "resolve"]
 EOF
 
-  # mcr.m.daocloud.io image acceleration
-  mkdir -p $CONTAINERD_ACCELERATION_DIR/mcr.microsoft.com && tee $_/hosts.toml <<-EOF
+      # mcr.m.daocloud.io image acceleration
+      mkdir -p $CONTAINERD_ACCELERATION_DIR/mcr.microsoft.com && tee $_/hosts.toml <<-EOF
 server = "https://mcr.microsoft.com"
 
 [host."https://mcr.m.daocloud.io"]
   capabilities = ["pull", "resolve"]
 EOF
 
-  # nvcr.io image acceleration
-  mkdir -p $CONTAINERD_ACCELERATION_DIR/nvcr.io && tee $_/hosts.toml <<-EOF
+      # nvcr.io image acceleration
+      mkdir -p $CONTAINERD_ACCELERATION_DIR/nvcr.io && tee $_/hosts.toml <<-EOF
 server = "https://nvcr.io"
 
 [host."https://nvcr.m.daocloud.io"]
   capabilities = ["pull", "resolve"]
 EOF
 
-  # quay.io image acceleration
-  mkdir -p $CONTAINERD_ACCELERATION_DIR/quay.io && tee $_/hosts.toml <<-EOF
+      # quay.io image acceleration
+      mkdir -p $CONTAINERD_ACCELERATION_DIR/quay.io && tee $_/hosts.toml <<-EOF
 server = "https://quay.io"
 
 [host."https://quay.m.daocloud.io"]
   capabilities = ["pull", "resolve"]
 EOF
 
-  # registry.jujucharms.com image acceleration
-  mkdir -p $CONTAINERD_ACCELERATION_DIR/registry.jujucharms.com && tee $_/hosts.toml <<-EOF
+      # registry.jujucharms.com image acceleration
+      mkdir -p $CONTAINERD_ACCELERATION_DIR/registry.jujucharms.com && tee $_/hosts.toml <<-EOF
 server = "https://registry.jujucharms.com"
 
 [host."https://jujucharms.m.daocloud.io"]
   capabilities = ["pull", "resolve"]
 EOF
 
-  # rocks.canonical.com image acceleration
-  mkdir -p $CONTAINERD_ACCELERATION_DIR/rocks.canonical.com && tee $_/hosts.toml <<-EOF
+      # rocks.canonical.com image acceleration
+      mkdir -p $CONTAINERD_ACCELERATION_DIR/rocks.canonical.com && tee $_/hosts.toml <<-EOF
 server = "https://rocks.canonical.com"
 
 [host."https://rocks-canonical.m.daocloud.io"]
   capabilities = ["pull", "resolve"]
 EOF
+    ;;
+esac
 
   if [[ -n "$CONTAINERD_PROXY_ENDPOINT" ]]; then
     _logger info "Config proxy endpoint"
