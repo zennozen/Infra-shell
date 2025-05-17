@@ -331,6 +331,8 @@ EOF
 ##   install_containerd
 #############################################################################
 function install_containerd() {
+  _remote_get_resource rpm bash-completion $offline_pkg_path/rpm/bash-completion -q
+
   if which nerdctl 2>/dev/null && which containerd 2>/dev/null; then
     _logger warn "containerd_with_nerdctl already install on system."
   else
@@ -348,11 +350,6 @@ function install_containerd() {
     bash $dep_script install $nerdctl_ver || { _logger error "Script $dep_script failed, exit code $?" && exit 1; }
     rm -rf /usr/local/src/nerdctl-full-*.tar.gz
   fi
-
-  # config command auto-completion
-  _logger info "3.x Enable nerdctl command auto-completion"
-  _remote_get_resource rpm bash-completion $offline_pkg_path/rpm/bash-completion -q
-  echo "source <(nerdctl completion bash)" >> ~/.bashrc && source <(nerdctl completion bash)
 
   # set alias docker
   _logger info "3.x Set the alias of nerdctl to docker"
@@ -411,15 +408,12 @@ EOF
     _logger info "The firewall is already disabled on the current system, no action needed."
   fi
 
-  _logger info "4.6 Enable kubectl command auto-completion"
+  _logger info "4.6 Enable kubeadm, kubectl, crictl, ctr command auto-completion"
   _remote_get_resource rpm bash-completion $offline_pkg_path/rpm/bash-completion -q
+  echo "source <(kubeadm completion bash)" >> ~/.bashrc && source <(kubeadm completion bash)
   echo "source <(kubectl completion bash)" >> ~/.bashrc && source <(kubectl completion bash)
-
-  source <(kubectl completion bash)
-source <(nerdctl completion bash)
-source <(crictl completion bash)
-source <(ctr completion bash)
-source <(kubeadm completion bash)
+  echo "source <(crictl completion bash)" >> ~/.bashrc && source <(crictl completion bash)
+  echo "source <(ctr completion bash)" >> ~/.bashrc && source <(ctr completion bash)
 }
 
 
