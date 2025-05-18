@@ -811,7 +811,7 @@ function install_calico() {
   _logger info "8.2 install calicoctl cli tools"
   cp $calico_config_path/calicoctl-linux-amd64 /usr/local/bin/calicoctl && chmod +x $_
   # fix error for calicoctl version: ClusterInformation(default) with error: clusterinformations.crd.projectcalico.org "default" not found
-  while true; do if kubectl get clusterinformation -n kube-system; then break; sleep 3; fi; done
+  _chk_pod calico-system
   _logger info "The Calicoctl version:"
   calicoctl version
   _logger info "The current status of a Calico node:"
