@@ -413,7 +413,6 @@ EOF
   echo "source <(kubeadm completion bash)" >> ~/.bashrc && source <(kubeadm completion bash)
   echo "source <(kubectl completion bash)" >> ~/.bashrc && source <(kubectl completion bash)
   echo "source <(crictl completion bash)" >> ~/.bashrc && source <(crictl completion bash)
-  echo "source <(ctr completion bash)" >> ~/.bashrc && source <(ctr completion bash)
 }
 
 
