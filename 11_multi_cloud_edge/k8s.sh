@@ -445,7 +445,7 @@ function _update_containerd_pause_img() {
 
   _logger info "5.3 Enable SystemdCgroup and change sandbox_image to pause:$pause_img_ver, required by k8s"
   # update cgroup driver
-  sed -i -e '/systemd_cgroup/s/false/true/g' -e '/SystemdCgroup/s/false/true/g' $containerd_conf
+  sed -i -e '/SystemdCgroup/s/false/true/g' $containerd_conf
   # update sandbox image
   case $containerd_v in
     1)
@@ -486,7 +486,6 @@ function _update_containerd_pause_img() {
 #############################################################################
 function config_private_registry() {
   local containerd_conf="/etc/containerd/config.toml"
-  local containerd_v=$(containerd -v | awk -F' |v' '{print $4}' | awk -F'.' '{print $1}')
 
   _print_line title "5. Set up a simple private repository for the cluster (current machine: $(hostname))"
 
@@ -508,34 +507,33 @@ function config_private_registry() {
   # _update_containerd_pause_img registry.cn-hangzhou.aliyuncs.com/google_containers  # public
   _update_containerd_pause_img $INIT_NODE_IP:5000   # private
 
-  case $containerd_v in
-    1)
-      # update private registry config in config.toml
-      sed -i "/\[plugins.\"io.containerd.grpc.v1.cri\".registry.mirrors\]/a \
+  # update private registry config in config.toml: registry.mirrors, registry.configs, and restart service
+  _logger info "5.4 Update private registry config in config.toml to support HTTP for containerd CRI interactions (crictl, k8s)"
+  local containerd_conf="/etc/containerd/config.toml"
+
+  sed -i "/\[plugins.\"io.containerd.grpc.v1.cri\".registry.mirrors\]/a \
     \        [plugins.\"io.containerd.grpc.v1.cri\".registry.mirrors.\"${INIT_NODE_IP}:5000\"\] \
     \n\          endpoint = \[\"http://${INIT_NODE_IP}:5000\"\]" "$containerd_conf"
 
-      sed -i "/\[plugins.\"io.containerd.grpc.v1.cri\".registry.configs\]/a \
+  sed -i "/\[plugins.\"io.containerd.grpc.v1.cri\".registry.configs\]/a \
     \        [plugins.\"io.containerd.grpc.v1.cri\".registry.configs.\"${INIT_NODE_IP}:5000\".tls] \
-    \n\          insecure_skip_verify = true" "$containerd_conf"
+    \n\          insecure_skip_verify = true" "$containerd_conf"    
 
-      systemctl restart containerd
-      while ! systemctl is-active containerd &>/dev/null; do
-        _logger info "Restart containerd service starting ..."
-        sleep 1
-      done
-      ;;
-    2)
-      # update private registry config in certs.d
-      mkdir -p /etc/containerd/certs.d/$INIT_NODE_IP:5000 && tee $_/hosts.toml <<-EOF
+  systemctl restart containerd
+  while ! systemctl is-active containerd &>/dev/null; do
+    _logger info "Restart containerd service starting ..."
+    sleep 1
+  done
+
+  # update private registry config in certs.d: registry.mirrors, actions: pull/resolve,push, no need restart service
+  _logger info "5.5 Update private registry config in certs.d to support HTTP (for containerd underlying interface, such as nerdctl)"
+  mkdir -p /etc/containerd/certs.d/$INIT_NODE_IP:5000 && tee $_/hosts.toml <<-EOF
 server = "http://$INIT_NODE_IP:5000"
 
 [host."http://$INIT_NODE_IP:5000"]
   capabilities = ["pull", "resolve", "push"]
 EOF
-      sleep 5  # allow containerd to reload the updated configurations from /etc/containerd/certs.d
-      ;;
-  esac
+  sleep 5  # allow containerd to reload the updated configurations from /etc/containerd/certs.d
 }
 
 
