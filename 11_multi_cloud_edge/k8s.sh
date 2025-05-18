@@ -73,10 +73,10 @@ case $K8S_V in
 esac
 
 case $K8S_V in
-  1.24|1.25|1.26|1.27|1.28|1.29)
+  1.24|1.25|1.26|1.27|1.28|1.29|1.30)
     NERDCTL_VER="1.7.7"
     ;;
-  1.30|1.31|1.32)
+  1.31|1.32)
     NERDCTL_VER="2.0.5"
     ;;
 esac
@@ -809,7 +809,7 @@ function install_calico() {
   kubectl apply -f $calico_config_path/custom-resources.yaml
 
   _logger info "8.2 install calicoctl cli tools"
-  cp $calico_config_path/calicoctl-linux-amd64 /usr/local/bin/calico && chmod +x $_
+  cp $calico_config_path/calicoctl-linux-amd64 /usr/local/bin/calicoctl && chmod +x $_
   _logger info "The Calicoctl version:"
   calicoctl version
   _logger info "The current status of a Calico node:"
