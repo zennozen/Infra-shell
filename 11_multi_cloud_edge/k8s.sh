@@ -814,6 +814,8 @@ function install_calico() {
   _chk_pod calico-system
   _logger info "The Calicoctl version:"
   calicoctl version
+  # fix error for calicoctl node status: Calico process is not running
+  _chk_pod calico-apiserver
   _logger info "The current status of a Calico node:"
   calicoctl node status
 }
