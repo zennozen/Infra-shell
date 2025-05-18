@@ -286,7 +286,9 @@ EOF
     answer=${answer:-"y"}
     [[ "$answer" =~ ^[Yy]$ ]] || { _logger error "User cancelled, exiting..." && return 1; }
     sync_hostname=true
-  else
+  fi
+  
+  if [[ -n "$sync_hostname" ]]; then
     for ip in "${!ip2host[@]}"; do
       if ssh -o BatchMode=yes -o ConnectTimeout=5 "$USER@$ip" "hostnamectl set-hostname ${ip2host[$ip]}"; then
         echo -e "${green}Hostname updated successfully on ${ip2host[$ip]} ($ip).${reset}"
