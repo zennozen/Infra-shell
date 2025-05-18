@@ -1303,8 +1303,6 @@ function cluster_health_chk() {
         ;;
       kuboard)
         echo -e "${green}$UI_BOARD_TY is deployed, please visit http://$SRV_IP:30080/, default username/password: admin/Kuboard123"
-        local kuboard_apiserver_endpoint="$(kubectl config view --minify --raw | grep server | awk '{print $2}')"
-        echo -e "${gray}Follow web prompts to import cluster. Cluster API server endpoint: $kuboard_apiserver_endpoint${reset}"
         ;;
     esac
   fi
