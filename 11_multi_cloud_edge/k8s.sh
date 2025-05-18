@@ -1301,10 +1301,10 @@ function cluster_health_chk() {
     _print_line title "Information of the Kubernetes UI Board:"
     case $UI_BOARD_TY in
       kubernetes-dashboard)
-        echo -e "${green}$UI_BOARD_TY is deployed, please visit https://$SRV_IP:30443/, Login TOKEN: \n{reset}$DASHBOARD_TOKEN"
+        echo -e "${green}$UI_BOARD_TY is deployed, please visit https://$SRV_IP:30443/, Login TOKEN: \n ${reset}$DASHBOARD_TOKEN"
         ;;
       kuboard)
-        echo -e "${green}$UI_BOARD_TY is deployed, please visit http://$SRV_IP:30080/, default username/password: admin/Kuboard123"
+        echo -e "${green}$UI_BOARD_TY is deployed, please visit http://$SRV_IP:30080/, default username/password: admin/Kuboard123 ${reset}"
         ;;
     esac
   fi
