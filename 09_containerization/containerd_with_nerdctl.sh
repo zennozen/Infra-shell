@@ -51,7 +51,7 @@ function install() {
   _logger info "1.1 Enable the netfilter module to support routing forwarding"
   echo "br_netfilter" | tee /etc/modules-load.d/br_netfilter.conf
   systemctl restart systemd-modules-load
-  lsmod | grep "br_netfilter"
+  lsmod | grep "^br_netfilter"
 
   _logger info "1.2 Enable kernel routing forwarding, bridge filtering, and prefer to avoid using swap space, etc."
   tee /etc/sysctl.d/container.conf <<-EOF

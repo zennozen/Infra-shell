@@ -279,7 +279,7 @@ ip_vs_sh
 nf_conntrack
 EOF
   systemctl restart systemd-modules-load
-  lsmod | grep -E "ip_vs|nf_conntrack"
+  lsmod | grep -wE "^ip_vs|^nf_conntrack"
 
   # enable netfilter modules
   _logger info "2.5 Enable the netfilter module to support routing forwarding"
@@ -288,7 +288,7 @@ overlay
 br_netfilter
 EOF
   systemctl restart systemd-modules-load
-  lsmod | grep -E "br_netfilter|overlay"
+  lsmod | grep -wE "^br_netfilter|^overlay"
 
   # enable related kernel parameters
   _logger info "2.6 Enable kernel parameters such as routing forwarding, bridge filtering, and a preference to avoid using swap space"
@@ -743,9 +743,10 @@ function init_cluster() {
   cp -fv /etc/kubernetes/admin.conf $manage_conf
   chown $(id -u):$(id -g) $manage_conf
 
-  # view whether kube-proxy is in IPVS mode
-  _logger info "7.4 Verifying kube-proxy is using IPVS mode"
-  kubectl -n kube-system get cm kube-proxy -o yaml | grep mode  # k8s > v1.17, default ipvs
+  # modify kube-proxy mode to IPVS
+  _logger info "7.4 modify kube-proxy mode to IPVS"
+  kubectl -n kube-system get cm kube-proxy -o yaml | sed 's/mode:.*/mode: "ipvs"/g' | kubectl apply -f -
+  kubectl delete pod -n kube-system -l k8s-app=kube-proxy
 
   # get cluster node and kube-system's pod status
   _logger info "7.5 Verifying get node status and pod status via $manage_conf"
