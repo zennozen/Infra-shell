@@ -899,7 +899,7 @@ function remote_dist() {
     exit 1
   fi
 
-  cp $workdir/$dep_script /root/$dep_script
+  cp $workdir/$dep_script /root/$dep_script || true
   echo -e "rm -- "/root/\$0"" >> /root/$dep_script
   
   # distributed resources
