@@ -20,10 +20,6 @@ trap '_trap_print_env \
 # define golabal variables
 GITHUB_PROXY="https://ghproxy.net"
 NERDCTL_URL_PREFIX="$GITHUB_PROXY/https://github.com/containerd/nerdctl/releases/download"
-CONTAINERD_CONF="/etc/containerd/config.toml"
-CONTAINERD_ACCELERATION_DIR="$(echo $CONTAINERD_CONF | cut -d'/' -f-3)/certs.d"
-CONTAINERD_PROXY_ENDPOINT="$3"
-CONTAINERD_PROXY_CONF="/etc/systemd/system/containerd.service.d/http-proxy.conf"
 
 
 #######################################
@@ -36,7 +32,8 @@ function install() {
   ! which nerdctl 2>/dev/null || { _logger error "nerdctl already install on system." && exit 1; }
   ! which containerd 2>/dev/null || { _logger error "containerd already install on system." && exit 1; }
 
-  local NERDCTL_VER="$2"
+  local NERDCTL_VER="$1"
+  local CONTAINERD_PROXY_ENDPOINT="$2"
 
   if [[ -z $NERDCTL_VER ]]; then
     _logger warn "User not defined version number, auto-get latest official version."
@@ -91,11 +88,11 @@ EOF
 
   _logger info "4. Enable SystemdCgroup and configure image acceleration"
   mkdir -p /etc/containerd
-  [[ -f $CONTAINERD_CONF ]] && cp -fv $CONTAINERD_CONF{,.bak}
-  containerd config default > $CONTAINERD_CONF
+  [[ -f /etc/containerd/config.toml ]] && cp -fv /etc/containerd/config.toml{,.bak}
+  containerd config default > /etc/containerd/config.toml
 
   # update cgroup driver
-  sed -i -e '/SystemdCgroup/s/false/true/g' $CONTAINERD_CONF
+  sed -i -e '/SystemdCgroup/s/false/true/g' /etc/containerd/config.toml
 
   # configure image acceleration in config.toml to support HTTP for containerd CRI interactions (crictl, k8s)
   sed -i '/\[plugins\."io\.containerd\.grpc\.v1\.cri"\.registry\.mirrors\]/a \
@@ -118,12 +115,13 @@ EOF
         [plugins."io.containerd.grpc.v1.cri".registry.mirrors."registry.jujucharms.com"] \
           endpoint = ["https://jujucharms.m.daocloud.io"] \
         [plugins."io.containerd.grpc.v1.cri".registry.mirrors."rocks.canonical.com"] \
-          endpoint = ["https://rocks-canonical.m.daocloud.io"]' $CONTAINERD_CONF
+          endpoint = ["https://rocks-canonical.m.daocloud.io"]' \
+    /etc/containerd/config.toml
 
   # configure image acceleration in certs.d to support HTTP (for containerd underlying interface, such as nerdctl)
-  sed -i -e "/\[plugins.'io.containerd.cri.v1.images'.registry\]/,/\[/{s|config_path = ''|config_path = '$CONTAINERD_ACCELERATION_DIR'|}" $CONTAINERD_CONF
+  sed -i -e "/\[plugins.'io.containerd.cri.v1.images'.registry\]/,/\[/{s|config_path = ''|config_path = '/etc/containerd/cert.d'|}" /etc/containerd/config.toml
   # docker.hub image acceleration
-  mkdir -p $CONTAINERD_ACCELERATION_DIR/docker.io && tee $_/hosts.toml <<-EOF
+  mkdir -p /etc/containerd/cert.d/docker.io && tee $_/hosts.toml <<-EOF
 server = "https://docker.io"
 
 [host."https://docker.1ms.run"]
@@ -152,7 +150,7 @@ server = "https://docker.io"
 EOF
 
   # registry.k8s.io image acceleration
-  mkdir -p $CONTAINERD_ACCELERATION_DIR/registry.k8s.io && tee $_/hosts.toml <<-EOF
+  mkdir -p /etc/containerd/cert.d/registry.k8s.io && tee $_/hosts.toml <<-EOF
 server = "https://registry.k8s.io"
 
 [host."https://k8s.m.daocloud.io"]
@@ -160,7 +158,7 @@ server = "https://registry.k8s.io"
 EOF
 
   # docker.elastic.co image acceleration
-  mkdir -p $CONTAINERD_ACCELERATION_DIR/docker.elastic.co && tee $_/hosts.toml <<-EOF
+  mkdir -p /etc/containerd/cert.d/docker.elastic.co && tee $_/hosts.toml <<-EOF
 server = "https://docker.elastic.co"
 
 [host."https://elastic.m.daocloud.io"]
@@ -168,7 +166,7 @@ server = "https://docker.elastic.co"
 EOF
 
   # gcr.io image acceleration
-  mkdir -p $CONTAINERD_ACCELERATION_DIR/gcr.io && tee $_/hosts.toml <<-EOF
+  mkdir -p /etc/containerd/cert.d/gcr.io && tee $_/hosts.toml <<-EOF
 server = "https://gcr.io"
 
 [host."https://gcr.m.daocloud.io"]
@@ -179,7 +177,7 @@ server = "https://gcr.io"
 EOF
 
   # ghcr.io image acceleration
-  mkdir -p $CONTAINERD_ACCELERATION_DIR/ghcr.io && tee $_/hosts.toml <<-EOF
+  mkdir -p /etc/containerd/cert.d/ghcr.io && tee $_/hosts.toml <<-EOF
 server = "https://ghcr.io"
 
 [host."https://ghcr.m.daocloud.io"]
@@ -190,7 +188,7 @@ server = "https://ghcr.io"
 EOF
 
   # mcr.m.daocloud.io image acceleration
-  mkdir -p $CONTAINERD_ACCELERATION_DIR/mcr.microsoft.com && tee $_/hosts.toml <<-EOF
+  mkdir -p /etc/containerd/cert.d/mcr.microsoft.com && tee $_/hosts.toml <<-EOF
 server = "https://mcr.microsoft.com"
 
 [host."https://mcr.m.daocloud.io"]
@@ -198,7 +196,7 @@ server = "https://mcr.microsoft.com"
 EOF
 
   # nvcr.io image acceleration
-  mkdir -p $CONTAINERD_ACCELERATION_DIR/nvcr.io && tee $_/hosts.toml <<-EOF
+  mkdir -p /etc/containerd/cert.d/nvcr.io && tee $_/hosts.toml <<-EOF
 server = "https://nvcr.io"
 
 [host."https://nvcr.m.daocloud.io"]
@@ -206,7 +204,7 @@ server = "https://nvcr.io"
 EOF
 
   # quay.io image acceleration
-  mkdir -p $CONTAINERD_ACCELERATION_DIR/quay.io && tee $_/hosts.toml <<-EOF
+  mkdir -p /etc/containerd/cert.d/quay.io && tee $_/hosts.toml <<-EOF
 server = "https://quay.io"
 
 [host."https://quay.m.daocloud.io"]
@@ -214,7 +212,7 @@ server = "https://quay.io"
 EOF
 
   # registry.jujucharms.com image acceleration
-  mkdir -p $CONTAINERD_ACCELERATION_DIR/registry.jujucharms.com && tee $_/hosts.toml <<-EOF
+  mkdir -p /etc/containerd/cert.d/registry.jujucharms.com && tee $_/hosts.toml <<-EOF
 server = "https://registry.jujucharms.com"
 
 [host."https://jujucharms.m.daocloud.io"]
@@ -222,7 +220,7 @@ server = "https://registry.jujucharms.com"
 EOF
 
   # rocks.canonical.com image acceleration
-  mkdir -p $CONTAINERD_ACCELERATION_DIR/rocks.canonical.com && tee $_/hosts.toml <<-EOF
+  mkdir -p /etc/containerd/cert.d/rocks.canonical.com && tee $_/hosts.toml <<-EOF
 server = "https://rocks.canonical.com"
 
 [host."https://rocks-canonical.m.daocloud.io"]
@@ -231,8 +229,8 @@ EOF
 
   if [[ -n "$CONTAINERD_PROXY_ENDPOINT" ]]; then
     _logger info "Config proxy endpoint"
-    mkdir -p $(echo $CONTAINERD_PROXY_CONF | cut -d'/' -f -5)
-    [[ -f $CONTAINERD_PROXY_CONF ]] && \cp -v $CONTAINERD_PROXY_CONF $CONTAINERD_PROXY_CONF.bak
+    [[ -f /etc/systemd/system/containerd.service.d/http-proxy.conf ]] && cp -fv /etc/systemd/system/containerd.service.d/http-proxy.conf{,.bak}
+    mkdir -p /etc/systemd/system/containerd.service.d
     local no_proxy_subnet=(
       localhost,
       127.0.0.0/8,
@@ -245,7 +243,7 @@ EOF
       .ewhisper.cn
     )
 
-    tee $CONTAINERD_PROXY_CONF <<-EOF
+    tee /etc/systemd/system/containerd.service.d/http-proxy.conf <<-EOF
 [Service]
 Environment="HTTP_PROXY=http://$CONTAINERD_PROXY_ENDPOINT"
 Environment="HTTPS_PROXY=http://$CONTAINERD_PROXY_ENDPOINT"
@@ -257,7 +255,50 @@ EOF
     systemctl daemon-reload
   fi
 
-  _logger info "4. Start related services"
+  _logger info "4. configure worker and image acceleration for buildkitd.service"
+  [[ -f /etc/buildkit/buildkitd.toml ]] && cp -fv /etc/buildkit/buildkitd.toml{,.bak}
+  mkdir -p /etc/buildkit
+  tee /etc/buildkit/buildkitd.toml <<-EOF
+[worker.oci]
+  enabled = false
+
+[worker.containerd]
+  enabled = true
+  # namespace should be "k8s.io" for Kubernetes (including Rancher Desktop)
+  namespace = "default"
+
+[registry."docker.io"]
+  mirrors = ["https://docker.1ms.run", "https://docker-0.unsee.tech", "https://docker.m.daocloud.io", "https://register.librax.org", "https://docker.hlmirror.com"]
+
+[registry."registry.k8s.io"]
+  mirrors = ["https://k8s.m.daocloud.io"]
+
+[registry."docker.elastic.co"]
+  mirrors = ["https://elastic.m.daocloud.io"]
+
+[registry."gcr.io"]
+  mirrors = ["https://gcr.m.daocloud.io", "https://gcr.1ms.run"]
+
+[registry."ghcr.io"]
+  mirrors = ["https://ghcr.m.daocloud.io", "https://ghcr.1ms.run"]
+
+[registry."mcr.microsoft.com"]
+  mirrors = ["https://mcr.m.daocloud.io"]
+
+[registry."nvcr.io"]
+  mirrors = ["https://nvcr.m.daocloud.io"]
+
+[registry."quay.io"]
+  mirrors = ["https://quay.m.daocloud.io"]
+
+[registry."registry.jujucharms.com"]
+  mirrors = "https://jujucharms.m.daocloud.io"]
+
+[registry."rocks.canonical.com"]
+  mirrors = ["https://rocks-canonical.m.daocloud.io"]
+EOF
+
+  _logger info "5. Start related services"
   which git &>/dev/null || dnf install -qy git >/dev/null    # if buildkit git source be enabled
   # systemctl enable containerd stargz-snapshotter buildkit --now
   # systemctl status --no-pager containerd stargz-snapshotter buildkit
@@ -272,8 +313,8 @@ EOF
   _logger info "Containerd with Nerdctl has been successfully installed.
 Summary:
   Version: please run ${blue}nerdctl info / nerdctl version${green} to show
-  Config: $CONTAINERD_CONF
-  Proxy config: $CONTAINERD_PROXY_CONF
+  Config: /etc/containerd/config.toml
+  Proxy config: /etc/systemd/system/containerd.service.d/http-proxy.conf
   Proxy endpoint: $CONTAINERD_PROXY_ENDPOINT"
   echo -e "${yellow}      Nerdctl is fully compatible with Docker syntax. If you prefer Docker,"
   echo -e "${yellow}      just run ${blue}echo "alias docker='nerdctl'" >> ~/.bashrc && bash${reset}.\n"
@@ -318,7 +359,7 @@ function main() {
 
   case $1 in
     install)
-      install ${@:1}
+      install ${@:2}
       ;;
     remove)
       remove
