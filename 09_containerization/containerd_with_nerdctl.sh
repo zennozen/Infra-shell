@@ -292,7 +292,7 @@ EOF
   mirrors = ["https://quay.m.daocloud.io"]
 
 [registry."registry.jujucharms.com"]
-  mirrors = "https://jujucharms.m.daocloud.io"]
+  mirrors = ["https://jujucharms.m.daocloud.io"]
 
 [registry."rocks.canonical.com"]
   mirrors = ["https://rocks-canonical.m.daocloud.io"]
