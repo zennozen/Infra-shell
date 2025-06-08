@@ -408,7 +408,7 @@ EOF
     _logger info "The firewall is already disabled on the current system, no action needed."
   fi
 
-  _logger info "4.6 Enable kubeadm, kubectl, crictl, ctr command auto-completion"
+  _logger info "4.6 Enable kubeadm, kubectl, crictl command auto-completion"
   _remote_get_resource rpm bash-completion $offline_pkg_path/rpm/bash-completion -q
   echo "source <(kubeadm completion bash)" >> ~/.bashrc && source <(kubeadm completion bash)
   echo "source <(kubectl completion bash)" >> ~/.bashrc && source <(kubectl completion bash)
