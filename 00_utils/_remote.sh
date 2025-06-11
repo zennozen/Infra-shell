@@ -111,7 +111,7 @@ srv-passwd=\"AAAaaa12#$\"
     # from user input
     _logger info "No $HOME/.hosts file found, entering interactive input mode"
     echo -e "${green}Enter IPs and hostnames, one per line, an empty line completes the input, example:"
-    echo -e "${gray}192.168.85.121 server-01\n192.168.85.122 server-02\n192.168.85.123 server-03${reset}"
+    echo -e "${gray}$ipSegment.111 k8s-master1\n$ipSegment.121 k8s-node1\n$ipSegment.122 k8s-node2${reset}"
 
     while true; do
       read -p "" line
