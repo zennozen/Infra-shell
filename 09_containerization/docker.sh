@@ -157,6 +157,7 @@ function update_config_and_start() {
         "https://docker.1ms.run",
         "https://docker-0.unsee.tech",
         "https://docker.m.daocloud.io",
+        "https://docker.xuanyuan.me",
         "https://register.librax.org",
         "https://docker.hlmirror.com",
         "https://lispy.org",

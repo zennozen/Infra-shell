@@ -133,6 +133,9 @@ server = "https://docker.io"
 [host."https://docker.m.daocloud.io"]
   capabilities = ["pull", "resolve"]
 
+[host."https://docker.xuanyuan.me"]
+  capabilities = ["pull", "resolve"]
+
 [host."https://register.librax.org"]
   capabilities = ["pull", "resolve"]
 
@@ -267,7 +270,7 @@ EOF
   namespace = "default"
 
 [registry."docker.io"]
-  mirrors = ["https://docker.1ms.run", "https://docker-0.unsee.tech", "https://docker.m.daocloud.io", "https://register.librax.org", "https://docker.hlmirror.com"]
+  mirrors = ["https://docker.1ms.run", "https://docker-0.unsee.tech", "https://docker.m.daocloud.io", "https://docker.xuanyuan.me", "https://register.librax.org", "https://docker.hlmirror.com"]
 
 [registry."registry.k8s.io"]
   mirrors = ["https://k8s.m.daocloud.io"]
