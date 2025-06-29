@@ -70,7 +70,8 @@ EOF
   sysctl -p /etc/sysctl.d/container.conf
   
   _logger info "2. Add official yum repo"
-  dnf config-manager --add-repo=https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
+  dnf config-manager --add-repo=https://mirrors.tuna.tsinghua.edu.cn/docker-ce/linux/centos/docker-ce.repo
+  sed -i 's#https://download.docker.com#https://mirrors.tuna.tsinghua.edu.cn#g' /etc/yum.repos.d/docker-ce.repo
   dnf makecache
 
   _logger info "3. Install docker-ce"
