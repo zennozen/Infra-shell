@@ -155,7 +155,7 @@ deb-src https://mirrors.aliyun.com/ubuntu/ noble-backports main restricted unive
 EOF
 
   apt update
-  apt apt-cache policy
+  apt-cache policy
 }
 
 
